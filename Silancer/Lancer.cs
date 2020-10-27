@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 namespace Silancer
@@ -18,6 +19,7 @@ namespace Silancer
         public ulong SuccessCounter { get; set; }
         public ulong ContinueFailedCounter { get; set; }
         public bool IsSuccessful { get; set; }
+        public bool IsMegaAttack { get; set; } = false;
         public bool MayBeBanned { get; set; } = false;
     }
     public class Lancer
@@ -105,10 +107,37 @@ namespace Silancer
             }
             return (true, response);
         }
-        //public (bool f, HttpWebResponse r) MegaAttack(string str)
-        //{
 
-        //}
+        public (bool f, List<HttpWebResponse> rs) MegaAttack(string str)
+        {
+            List<HttpWebResponse> retResponses = new List<HttpWebResponse>();
+            List<Task> tasks = new List<Task>();
+            bool end = false;
+            CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+            while (!end)
+            {
+                Task t = new Task(() =>
+                {
+                    (bool singleFlag, HttpWebResponse singleRes) = SendMessage(str);
+                    if (singleRes != null)
+                        retResponses.Add(singleRes);
+                    if (!singleFlag)
+                    {
+                        end = true;
+                    }
+                    Stream responseStream = singleRes.GetResponseStream();
+                    string res = "";
+                    using (StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8))
+                        res = streamReader.ReadToEnd();
+                    if (res.Contains("addChatItemAction")) end = true;
+                }, cancellationTokenSource.Token);
+                t.Start();
+                tasks.Add(t);
+                Thread.Sleep(100);
+            }
+            cancellationTokenSource.Cancel();
+            return (true, retResponses);
+        }
         #region 命令行
         public ConcurrentQueue<string> CmdsQueue { get; private set; } = new ConcurrentQueue<string>();
         public bool WriteLine(string line)
@@ -142,55 +171,91 @@ namespace Silancer
                 Match match = Regex.Match(msg, @"^\[(NM|MA{1})\](.+)");
                 if (match.Success)
                 {
-                    if (match.Groups[1].Value == "NM")
+                    messageIndex += 1;
+                    switch (match.Groups[1].Value)
                     {
-                        messageIndex += 1;
-                        (bool f, HttpWebResponse r) = SendMessage(match.Groups[2].Value);
-                        if (!f)
-                        {
-                            continueFailedCounter += 1UL;
-                            SendFailed?.Invoke(this, new LancerSendEventArgs
+                        case "NM":
                             {
-                                MessageIndex = messageIndex,
-                                SendCounter = sendCounter,
-                                IsSuccessful = false,
-                                SuccessCounter = successCounter,
-                                ContinueFailedCounter = continueFailedCounter
-                            });
-                        }
-                        else
-                        {
-                            string resContent = "";
-                            using (StreamReader sr = new StreamReader(r.GetResponseStream()))
-                            {
-                                resContent = sr.ReadToEnd();
-                            }
-                            bool flag5 = !resContent.Contains("addChatItemAction");
-                            if (flag5)
-                            {
-                                SendFailed?.Invoke(this, new LancerSendEventArgs
+                                (bool f, HttpWebResponse r) = SendMessage(match.Groups[2].Value);
+                                if (!f)
                                 {
-                                    MessageIndex = messageIndex,
-                                    SendCounter = sendCounter,
-                                    IsSuccessful = false,
-                                    SuccessCounter = successCounter,
-                                    MayBeBanned = true
-                                });
-                            }
-                            else
-                            {
-                                continueFailedCounter = 0;
-                                successCounter += 1;
-                                SendSucceeded?.Invoke(this, new LancerSendEventArgs
+                                    continueFailedCounter += 1;
+                                    SendFailed?.Invoke(this, new LancerSendEventArgs
+                                    {
+                                        MessageIndex = messageIndex,
+                                        SendCounter = sendCounter,
+                                        IsSuccessful = false,
+                                        SuccessCounter = successCounter,
+                                        ContinueFailedCounter = continueFailedCounter
+                                    });
+                                }
+                                else
                                 {
-                                    MessageIndex = messageIndex,
-                                    SendCounter = sendCounter,
-                                    IsSuccessful = true,
-                                    SuccessCounter = successCounter
-                                });
+                                    string resContent = "";
+                                    using (StreamReader sr = new StreamReader(r.GetResponseStream()))
+                                    {
+                                        resContent = sr.ReadToEnd();
+                                    }
+                                    if (!resContent.Contains("addChatItemAction"))
+                                    {
+                                        SendFailed?.Invoke(this, new LancerSendEventArgs
+                                        {
+                                            MessageIndex = messageIndex,
+                                            SendCounter = sendCounter,
+                                            IsSuccessful = false,
+                                            SuccessCounter = successCounter,
+                                            MayBeBanned = true
+                                        });
+                                    }
+                                    else
+                                    {
+                                        continueFailedCounter = 0;
+                                        successCounter += 1;
+                                        SendSucceeded?.Invoke(this, new LancerSendEventArgs
+                                        {
+                                            MessageIndex = messageIndex,
+                                            SendCounter = sendCounter,
+                                            IsSuccessful = true,
+                                            SuccessCounter = successCounter
+                                        });
+                                    }
+                                }
+                                break;
                             }
-                        }
+                        case "MA":
+                            {
+                                (bool f, List<HttpWebResponse> rs) = MegaAttack(match.Groups[2].Value);
+                                if (!f)
+                                {
+                                    continueFailedCounter += 1;
+                                    SendFailed?.Invoke(this, new LancerSendEventArgs
+                                    {
+                                        MessageIndex = messageIndex,
+                                        SendCounter = sendCounter,
+                                        IsSuccessful = false,
+                                        IsMegaAttack = true,
+                                        SuccessCounter = successCounter,
+                                        ContinueFailedCounter = continueFailedCounter
+                                    });
+                                }
+                                else
+                                {
+                                    continueFailedCounter = 0;
+                                    successCounter += 1;
+                                    SendSucceeded?.Invoke(this, new LancerSendEventArgs
+                                    {
+                                        MessageIndex = messageIndex,
+                                        SendCounter = sendCounter,
+                                        IsSuccessful = true,
+                                        IsMegaAttack = true,
+                                        SuccessCounter = successCounter
+                                    });
+                                }
+                                break;
+                            }
                     }
+
+
                 }
             }
         }
