@@ -57,9 +57,8 @@ namespace Silancer
         /// </summary>
         /// <param name="str"></param>
         /// <returns></returns>
-        public (bool successFlag, HttpWebResponse response) SendMessage(string str)
+        public int SendMessage(string str)
         {
-            HttpWebResponse response = null;
             sendCounter++;
             try
             {
@@ -81,31 +80,26 @@ namespace Silancer
                     str,
                     "\"}]}}"
                 });
-                byte[] bytes = Encoding.UTF8.GetBytes(s);
-                httpWebRequest.ContentLength = bytes.Length;
-                Stream requestStream = httpWebRequest.GetRequestStream();
-                requestStream.Write(bytes, 0, bytes.Length);
-                requestStream.Close();
-                response = (HttpWebResponse)httpWebRequest.GetResponse();
+                using (Stream requestStream = httpWebRequest.GetRequestStream())
+                using (StreamWriter sr = new StreamWriter(requestStream))
+                    sr.Write(s);
+                using HttpWebResponse response = (HttpWebResponse)httpWebRequest.GetResponse();
+                using Stream resStream = response.GetResponseStream();
+                string resContent = "";
+                using (StreamReader sr = new StreamReader(resStream))
+                    resContent = sr.ReadToEnd();
+                if (!resContent.Contains("addChatItemAction"))
+                    return 0;
             }
-            catch (WebException ex)
+            catch (WebException)
             {
-                if (ex.Status != WebExceptionStatus.ProtocolError)
-                {
-                    return (false, null);
-                }
-                response = (HttpWebResponse)ex.Response;
+                return -2;
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Console.WriteLine(e);
-                if (response != null)
-                {
-                    response.Close();
-                }
-                return (false, null);
+                return -1;
             }
-            return (true, response);
+            return 1;
         }
 
         public (bool f, List<HttpWebResponse> rs) MegaAttack(string str)
@@ -118,18 +112,10 @@ namespace Silancer
             {
                 Task t = new Task(() =>
                 {
-                    (bool singleFlag, HttpWebResponse singleRes) = SendMessage(str);
-                    if (singleRes != null)
-                        retResponses.Add(singleRes);
-                    if (!singleFlag)
+                    if (SendMessage(str) >= 0)
                     {
                         end = true;
                     }
-                    Stream responseStream = singleRes.GetResponseStream();
-                    string res = "";
-                    using (StreamReader streamReader = new StreamReader(responseStream, Encoding.UTF8))
-                        res = streamReader.ReadToEnd();
-                    if (res.Contains("addChatItemAction")) end = true;
                 }, cancellationTokenSource.Token);
                 t.Start();
                 tasks.Add(t);
@@ -138,14 +124,13 @@ namespace Silancer
             cancellationTokenSource.Cancel();
             return (true, retResponses);
         }
-        #region 命令行
-        public ConcurrentQueue<string> CmdsQueue { get; private set; } = new ConcurrentQueue<string>();
-        public bool WriteLine(string line)
+        #region 命令
+        public bool Command(AttackMode mode, string content)
         {
-            if (string.IsNullOrEmpty(line)) return true;
+            if (string.IsNullOrEmpty(content)) return true;
             try
             {
-                CmdsQueue.Enqueue(line);
+                CmdsQueue.Enqueue(new AttackCommand() { Content = content, Mode = mode });
             }
             catch
             {
@@ -153,6 +138,7 @@ namespace Silancer
             }
             return true;
         }
+        public ConcurrentQueue<AttackCommand> CmdsQueue { get; private set; } = new ConcurrentQueue<AttackCommand>();
         #endregion
 
         #region 进程
@@ -163,79 +149,37 @@ namespace Silancer
             {
                 while (CmdsQueue.Count < 1) Thread.Sleep(40);
                 string msg = "";
-                while (string.IsNullOrEmpty(msg))
+                if (CmdsQueue.TryDequeue(out AttackCommand cmd)) continue;
+                if (string.IsNullOrEmpty(cmd.Content)) continue;
+                messageIndex += 1;
+                switch (cmd.Mode)
                 {
-                    if (CmdsQueue.Count < 1) continue;
-                    if (CmdsQueue.TryDequeue(out msg)) break;
-                }
-                Match match = Regex.Match(msg, @"^\[(NM|MA{1})\](.+)");
-                if (match.Success)
-                {
-                    messageIndex += 1;
-                    switch (match.Groups[1].Value)
-                    {
-                        case "NM":
+                    case AttackMode.Normal:
+                        {
+                            int f = SendMessage(cmd.Content);
+                            if (f<0)
                             {
-                                (bool f, HttpWebResponse r) = SendMessage(match.Groups[2].Value);
-                                if (!f)
+                                continueFailedCounter += 1;
+                                SendFailed?.Invoke(this, new LancerSendEventArgs
                                 {
-                                    continueFailedCounter += 1;
-                                    SendFailed?.Invoke(this, new LancerSendEventArgs
-                                    {
-                                        MessageIndex = messageIndex,
-                                        SendCounter = sendCounter,
-                                        IsSuccessful = false,
-                                        SuccessCounter = successCounter,
-                                        ContinueFailedCounter = continueFailedCounter
-                                    });
-                                }
-                                else
-                                {
-                                    string resContent = "";
-                                    using (StreamReader sr = new StreamReader(r.GetResponseStream()))
-                                    {
-                                        resContent = sr.ReadToEnd();
-                                    }
-                                    if (!resContent.Contains("addChatItemAction"))
-                                    {
-                                        SendFailed?.Invoke(this, new LancerSendEventArgs
-                                        {
-                                            MessageIndex = messageIndex,
-                                            SendCounter = sendCounter,
-                                            IsSuccessful = false,
-                                            SuccessCounter = successCounter,
-                                            MayBeBanned = true
-                                        });
-                                    }
-                                    else
-                                    {
-                                        continueFailedCounter = 0;
-                                        successCounter += 1;
-                                        SendSucceeded?.Invoke(this, new LancerSendEventArgs
-                                        {
-                                            MessageIndex = messageIndex,
-                                            SendCounter = sendCounter,
-                                            IsSuccessful = true,
-                                            SuccessCounter = successCounter
-                                        });
-                                    }
-                                }
-                                break;
+                                    MessageIndex = messageIndex,
+                                    SendCounter = sendCounter,
+                                    IsSuccessful = false,
+                                    SuccessCounter = successCounter,
+                                    ContinueFailedCounter = continueFailedCounter
+                                });
                             }
-                        case "MA":
+                            else
                             {
-                                (bool f, List<HttpWebResponse> rs) = MegaAttack(match.Groups[2].Value);
-                                if (!f)
+                                if (f==0)
                                 {
-                                    continueFailedCounter += 1;
                                     SendFailed?.Invoke(this, new LancerSendEventArgs
                                     {
                                         MessageIndex = messageIndex,
                                         SendCounter = sendCounter,
                                         IsSuccessful = false,
-                                        IsMegaAttack = true,
                                         SuccessCounter = successCounter,
-                                        ContinueFailedCounter = continueFailedCounter
+                                        MayBeBanned = true
                                     });
                                 }
                                 else
@@ -247,15 +191,43 @@ namespace Silancer
                                         MessageIndex = messageIndex,
                                         SendCounter = sendCounter,
                                         IsSuccessful = true,
-                                        IsMegaAttack = true,
                                         SuccessCounter = successCounter
                                     });
                                 }
-                                break;
                             }
-                    }
-
-
+                            break;
+                        }
+                    case AttackMode.MegaAttack:
+                        {
+                            (bool f, List<HttpWebResponse> rs) = MegaAttack(cmd.Content);
+                            if (!f)
+                            {
+                                continueFailedCounter += 1;
+                                SendFailed?.Invoke(this, new LancerSendEventArgs
+                                {
+                                    MessageIndex = messageIndex,
+                                    SendCounter = sendCounter,
+                                    IsSuccessful = false,
+                                    IsMegaAttack = true,
+                                    SuccessCounter = successCounter,
+                                    ContinueFailedCounter = continueFailedCounter
+                                });
+                            }
+                            else
+                            {
+                                continueFailedCounter = 0;
+                                successCounter += 1;
+                                SendSucceeded?.Invoke(this, new LancerSendEventArgs
+                                {
+                                    MessageIndex = messageIndex,
+                                    SendCounter = sendCounter,
+                                    IsSuccessful = true,
+                                    IsMegaAttack = true,
+                                    SuccessCounter = successCounter
+                                });
+                            }
+                            break;
+                        }
                 }
             }
         }
@@ -295,5 +267,14 @@ namespace Silancer
             MyThread = null;
         }
         #endregion
+    }
+    public class AttackCommand
+    {
+        public AttackMode Mode { get; set; }
+        public string Content { get; set; }
+    }
+    public enum AttackMode
+    {
+        Normal, MegaAttack
     }
 }
