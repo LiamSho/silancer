@@ -18,7 +18,18 @@ namespace Silancer
             Dictionary<string, Lancer> lancers = new Dictionary<string, Lancer>();
             Dictionary<string, string> idNameMap = new Dictionary<string, string>();
             (lancers,idNameMap) = LoadLancers();
-            lancers[idNameMap["testf"]].WriteLine("[MA]2");
+            float interval = 3;
+            while (true)
+            {
+                if (interval > 0)
+                {
+                    Thread.Sleep(100);
+                    interval -= 0.1f;
+                    continue;
+                }
+                Console.WriteLine(lancers[idNameMap["testf"]].Command (AttackMode.Normal,DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"))); 
+                interval = 3;
+            }
         }
         static (Dictionary<string, Lancer>, Dictionary<string,string>) LoadLancers(string filePath = "enemies.json")
         {
@@ -33,6 +44,8 @@ namespace Silancer
             foreach (var e in enemies)
             {
                 var newLancer = new Lancer(e) { ID = Guid.NewGuid().ToString("X") };
+                newLancer.SendFailed += (s, a) => { Console.WriteLine($"[Failed]{a.MessageIndex}"); };
+                newLancer.SendSucceeded += (s, a) => { Console.WriteLine($"[Successful]{a.MessageIndex}"); };
                 var tempName = newLancer.Name;
                 int counter = 1;
                 while (idNameMap.ContainsKey(tempName))

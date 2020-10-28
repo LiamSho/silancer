@@ -64,10 +64,11 @@ namespace Silancer
             {
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(Host);
                 httpWebRequest.KeepAlive = true;
-                httpWebRequest.Headers.Set(HttpRequestHeader.Authorization, Authorization);
                 httpWebRequest.Headers.Add("X-Origin", "https://www.youtube.com");
                 httpWebRequest.Headers.Add("Origin", "https://www.youtube.com");
+                httpWebRequest.Headers.Set(HttpRequestHeader.Authorization, Authorization);
                 httpWebRequest.Headers.Set(HttpRequestHeader.Cookie, Cookie);
+                httpWebRequest.Headers.Set(HttpRequestHeader.UserAgent, "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36");
                 httpWebRequest.Method = "POST";
                 httpWebRequest.ServicePoint.Expect100Continue = false;
                 string s = string.Concat(new string[]
@@ -148,8 +149,7 @@ namespace Silancer
             while (!ReadyToStop)
             {
                 while (CmdsQueue.Count < 1) Thread.Sleep(40);
-                string msg = "";
-                if (CmdsQueue.TryDequeue(out AttackCommand cmd)) continue;
+                if (!CmdsQueue.TryDequeue(out AttackCommand cmd)) continue;
                 if (string.IsNullOrEmpty(cmd.Content)) continue;
                 messageIndex += 1;
                 switch (cmd.Mode)
@@ -235,7 +235,7 @@ namespace Silancer
         #endregion
 
         #region 委托与事件
-        public delegate void LancerSendEventHandler(Lancer sender, object args);
+        public delegate void LancerSendEventHandler(Lancer sender, LancerSendEventArgs args);
         public event LancerSendEventHandler SendSucceeded;
         public event LancerSendEventHandler SendFailed;
         #endregion
