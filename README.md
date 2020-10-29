@@ -12,17 +12,25 @@
 
 ## 配置文件
 `enemies.json`是用于存储WEB参数的配置文件，该Json文件应该包含一个列表，并且列表元素均为字典，总体形如
+>~~[{"Name": "","Key": "","Cookie": "","Authorization": "","Param": "","Onbehalfofuser": ""}]~~
+
 >[
 >  {
->    "Name": "",
->    "Key": "",
->    "Cookie": "",
->    "Authorization": "",
->    "Param": "",
->    "Onbehalfofuser": ""
->  }
+>   "Name": "",
+>   "Key": "",
+>   "Cookie": "",
+>   "ChannelID": "",
+>   "LiveID": "",
+>   "Onbehalfofuser": ""
+> }
 >]
 
-其中，Key、Cookie、Authorization、Param是构造请求的必选参数，Key、Cookie和Authorization来自于头文件，Param来自于负载段
+其中，Key、Cookie、~~Authorization、Param~~ChannelID、LiveID是构造请求的必选参数，Key、Cookie~~和Authorization~~来自于头文件，~~Param来自于负载段~~
+
+ChannelID即为主播主页后缀，如桐生可可的直播间(https://www.youtube.com/channel/UCS9uQI-jC3DE0L4IpXyvr6w) ，其Channel为`UCS9uQI-jC3DE0L4IpXyvr6w`
+
+LiveID为直播间标识号
+
+通过ChannelID和LiveID即可算出Param，而通过Cookie即可算出Authorization，所以此次更新更换了所需参数
 
 Name是另一个必选参数，但它是用于本地识别的特殊参数，你可以使用相同的名字，但是这些名字在读入过程中会被附加尾缀
