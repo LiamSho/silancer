@@ -7,10 +7,14 @@
 
   <ItemGroup>
     <None Remove="enemies.json" />
+    <None Remove="test.txt" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Include="enemies.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

@@ -15,9 +15,9 @@ namespace Silancer
     {
         static void Main(string[] args)
         {
-            Dictionary<string, Lancer> lancers = new Dictionary<string, Lancer>();
-            Dictionary<string, string> idNameMap = new Dictionary<string, string>();
-            (lancers,idNameMap) = LoadLancers();
+            Servant servant = new Servant();
+            servant.LoadAmmos("test.txt", "test");
+            (Dictionary<string, Lancer> lancers, Dictionary<string, string> idNameMap) = LoadLancers();
             float interval = 3;
             while (true)
             {
@@ -27,11 +27,11 @@ namespace Silancer
                     interval -= 0.1f;
                     continue;
                 }
-                Console.WriteLine(lancers[idNameMap["testf"]].Command (AttackMode.Normal,DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss"))); 
+                lancers[idNameMap["testf"]].Command(AttackMode.Normal, servant.RandomAmmo);
                 interval = 3;
             }
         }
-        static (Dictionary<string, Lancer>, Dictionary<string,string>) LoadLancers(string filePath = "enemies.json")
+        static (Dictionary<string, Lancer>, Dictionary<string, string>) LoadLancers(string filePath = "enemies.json")
         {
             List<Dictionary<string, string>> enemies = null;
             using (FileStream fs = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Write))
@@ -44,8 +44,8 @@ namespace Silancer
             foreach (var e in enemies)
             {
                 var newLancer = new Lancer(e) { ID = Guid.NewGuid().ToString("X") };
-                newLancer.SendFailed += (s, a) => { Console.WriteLine($"[Failed]{a.MessageIndex}"); };
-                newLancer.SendSucceeded += (s, a) => { Console.WriteLine($"[Successful]{a.MessageIndex}"); };
+                newLancer.SendFailed += (s, a) => { Console.WriteLine($"[{s.Name}][F|{a.MessageIndex}|{a.ContinueFailedCounter}]{a.MyAmmo.Content}"); };
+                newLancer.SendSucceeded += (s, a) => { Console.WriteLine($"[{s.Name}][S|{a.MessageIndex}]{a.MyAmmo.Content}"); };
                 var tempName = newLancer.Name;
                 int counter = 1;
                 while (idNameMap.ContainsKey(tempName))
@@ -57,5 +57,5 @@ namespace Silancer
             return (lancers, idNameMap);
         }
     }
-    
+
 }

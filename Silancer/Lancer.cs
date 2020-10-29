@@ -1,14 +1,18 @@
 ﻿using System;
+using System.Buffers.Text;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Silancer;
 
 namespace Silancer
 {
@@ -18,12 +22,41 @@ namespace Silancer
         public ulong SendCounter { get; set; }
         public ulong SuccessCounter { get; set; }
         public ulong ContinueFailedCounter { get; set; }
-        public bool IsSuccessful { get; set; }
+        public Ammo MyAmmo { get; set; }
+        public bool IsSendSuccessful { get; set; }
+        public bool IsNetSuccessful { get; set; }
         public bool IsMegaAttack { get; set; } = false;
-        public bool MayBeBanned { get; set; } = false;
     }
     public class Lancer
     {
+        public string GetParams(string channelID, string liveID)
+        {
+            var a = Encoding.ASCII.GetBytes("\x0a\x38\x0a\x0d\x0a\x0b");
+            var b = Encoding.ASCII.GetBytes("*'\x0a\x18");
+            var c = Encoding.ASCII.GetBytes("\x12\x0b");
+            var d = Encoding.ASCII.GetBytes("\x10\x01\x18\x04");
+            var channelCode = Encoding.UTF8.GetBytes(channelID);
+            var liveCode = Encoding.UTF8.GetBytes(liveID);
+            byte[] src = new byte[a.Length + b.Length + c.Length + d.Length + 2 * liveCode.Length + channelCode.Length];
+            int pnt = 0;
+            List<byte[]> list = new List<byte[]> { a, liveCode, b, channelCode, c, liveCode, d };
+            foreach (var ba in list)
+            {
+                ba.CopyTo(src, pnt);
+                pnt += ba.Length;
+            }
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(Convert.ToBase64String(src).Trim('=') + "%3D")).Trim('=');
+        }
+        public string GetAuth(string cookie)
+        {
+            string time = ((DateTime.Now.ToUniversalTime().Ticks - 621355968000000000) / 10000000).ToString();
+            StringBuilder sub = new StringBuilder();
+            foreach (var t in SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes($"{time} {Regex.Match(cookie, @"SAPISID=(.*?);").Groups[1]} https://www.youtube.com")))
+            {
+                sub.Append(t.ToString("X2"));
+            }
+            return $"SAPISIDHASH {time}_{sub.ToString().ToLower()}";
+        }
         // 本地实例身份
         public string ID { get; set; }
         public string Name { get; set; }
@@ -42,6 +75,8 @@ namespace Silancer
         private string key = "";
         public string Host { get; set; }
         public string Cookie { get; set; }
+        public string ChannelID { get; set; }
+        public string LiveID { get; set; }
         public string Authorization { get; set; }
         public string Onbehalfofuser { get; set; }
         public string Param { get; set; }
@@ -103,35 +138,37 @@ namespace Silancer
             return 1;
         }
 
-        public (bool f, List<HttpWebResponse> rs) MegaAttack(string str)
+        public int MegaAttack(string str)
         {
-            List<HttpWebResponse> retResponses = new List<HttpWebResponse>();
             List<Task> tasks = new List<Task>();
             bool end = false;
+            int counter = 0;
             CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
             while (!end)
             {
                 Task t = new Task(() =>
                 {
-                    if (SendMessage(str) >= 0)
+                    if (counter >= 400) { end = true; return; }
+                    if (SendMessage(str) > 0)
                     {
                         end = true;
                     }
                 }, cancellationTokenSource.Token);
                 t.Start();
                 tasks.Add(t);
+                Interlocked.Increment(ref counter);
                 Thread.Sleep(100);
             }
             cancellationTokenSource.Cancel();
-            return (true, retResponses);
+            return counter;
         }
         #region 命令
-        public bool Command(AttackMode mode, string content)
+        public bool Command(AttackMode mode, Ammo ammo)
         {
-            if (string.IsNullOrEmpty(content)) return true;
+            if (string.IsNullOrEmpty(ammo.Content)) return true;
             try
             {
-                CmdsQueue.Enqueue(new AttackCommand() { Content = content, Mode = mode });
+                CmdsQueue.Enqueue(new AttackCommand() { MyAmmo = ammo, Mode = mode });
             }
             catch
             {
@@ -150,85 +187,56 @@ namespace Silancer
             {
                 while (CmdsQueue.Count < 1) Thread.Sleep(40);
                 if (!CmdsQueue.TryDequeue(out AttackCommand cmd)) continue;
-                if (string.IsNullOrEmpty(cmd.Content)) continue;
+                if (string.IsNullOrEmpty(cmd.MyAmmo.Content)) continue;
                 messageIndex += 1;
+                bool isNetSuccessful = false;
+                bool isSendSuccessful = false;
                 switch (cmd.Mode)
                 {
                     case AttackMode.Normal:
                         {
-                            int f = SendMessage(cmd.Content);
-                            if (f<0)
-                            {
+                            int f = SendMessage(cmd.MyAmmo.Content);
+                            if (f < 0)
                                 continueFailedCounter += 1;
-                                SendFailed?.Invoke(this, new LancerSendEventArgs
-                                {
-                                    MessageIndex = messageIndex,
-                                    SendCounter = sendCounter,
-                                    IsSuccessful = false,
-                                    SuccessCounter = successCounter,
-                                    ContinueFailedCounter = continueFailedCounter
-                                });
-                            }
+                            else if (f == 0)
+                                isNetSuccessful = true;
                             else
                             {
-                                if (f==0)
-                                {
-                                    SendFailed?.Invoke(this, new LancerSendEventArgs
-                                    {
-                                        MessageIndex = messageIndex,
-                                        SendCounter = sendCounter,
-                                        IsSuccessful = false,
-                                        SuccessCounter = successCounter,
-                                        MayBeBanned = true
-                                    });
-                                }
-                                else
-                                {
-                                    continueFailedCounter = 0;
-                                    successCounter += 1;
-                                    SendSucceeded?.Invoke(this, new LancerSendEventArgs
-                                    {
-                                        MessageIndex = messageIndex,
-                                        SendCounter = sendCounter,
-                                        IsSuccessful = true,
-                                        SuccessCounter = successCounter
-                                    });
-                                }
+                                continueFailedCounter = 0;
+                                successCounter += 1;
+                                isNetSuccessful = true;
+                                isSendSuccessful = true;
                             }
                             break;
                         }
                     case AttackMode.MegaAttack:
                         {
-                            (bool f, List<HttpWebResponse> rs) = MegaAttack(cmd.Content);
-                            if (!f)
-                            {
+                            int f = MegaAttack(cmd.MyAmmo.Content);
+                            if (f == 0)
                                 continueFailedCounter += 1;
-                                SendFailed?.Invoke(this, new LancerSendEventArgs
-                                {
-                                    MessageIndex = messageIndex,
-                                    SendCounter = sendCounter,
-                                    IsSuccessful = false,
-                                    IsMegaAttack = true,
-                                    SuccessCounter = successCounter,
-                                    ContinueFailedCounter = continueFailedCounter
-                                });
-                            }
                             else
                             {
                                 continueFailedCounter = 0;
                                 successCounter += 1;
-                                SendSucceeded?.Invoke(this, new LancerSendEventArgs
-                                {
-                                    MessageIndex = messageIndex,
-                                    SendCounter = sendCounter,
-                                    IsSuccessful = true,
-                                    IsMegaAttack = true,
-                                    SuccessCounter = successCounter
-                                });
+                                isNetSuccessful = true;
+                                isSendSuccessful = true;
                             }
                             break;
                         }
                 }
+                LancerSendEventArgs args = new LancerSendEventArgs()
+                {
+                    MyAmmo = cmd.MyAmmo,
+                    MessageIndex = messageIndex,
+                    IsMegaAttack = cmd.Mode == AttackMode.MegaAttack,
+                    SendCounter = sendCounter,
+                    SuccessCounter = successCounter,
+                    IsNetSuccessful = isNetSuccessful,
+                    IsSendSuccessful = isSendSuccessful,
+                    ContinueFailedCounter = continueFailedCounter
+                };
+                if (isNetSuccessful && isSendSuccessful) SendSucceeded?.Invoke(this, args);
+                else SendFailed.Invoke(this, args);
             }
         }
         public Thread MyThread { get; private set; }
@@ -247,8 +255,10 @@ namespace Silancer
             Name = tempDic["Name"];
             Key = tempDic["Key"];
             Cookie = tempDic["Cookie"];
-            Authorization = tempDic["Authorization"];
-            Param = tempDic["Param"];
+            ChannelID = tempDic["ChannelID"];
+            LiveID = tempDic["LiveID"];
+            Authorization = GetAuth(Cookie);
+            Param = GetParams(ChannelID,LiveID);
             try
             {
                 Onbehalfofuser = tempDic["Onbehalfofuser"];
@@ -271,7 +281,7 @@ namespace Silancer
     public class AttackCommand
     {
         public AttackMode Mode { get; set; }
-        public string Content { get; set; }
+        public Ammo MyAmmo { get; set; }
     }
     public enum AttackMode
     {
