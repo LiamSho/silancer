@@ -22,20 +22,11 @@ namespace Silancer
         public bool IsNetSuccessful { get; set; }
         public bool IsMegaAttack { get; set; } = false;
     }
-    public class Lancer
+    public class Lancer : IFromJson
     {
         // 本地实例身份
         public string ID { get; set; }
         public string Name { get; set; }
-        public string Auth
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_auth))
-                    _auth = GetAuth(Cookie);
-                return _auth;
-            }
-        }
         public string GetAuth(string cookie)
         {
             string time = ((DateTime.Now.ToUniversalTime().Ticks - 621355968000000000) / 10000000).ToString();
@@ -62,7 +53,15 @@ namespace Silancer
         private string key = "";
         public string Host { get; set; }
         public string Cookie { get; set; }
-        public string Authorization { get; set; }
+        public string Authorization
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_auth))
+                    _auth = GetAuth(Cookie);
+                return _auth;
+            }
+        }
         public string Onbehalfofuser { get; set; }
 
         // 私有计数器
@@ -147,12 +146,12 @@ namespace Silancer
             return counter;
         }
         #region 命令
-        public bool Command(AttackMode mode, Ammo ammo)
+        public bool Command(AttackMode mode, Ammo ammo, Enemy enemy)
         {
             if (string.IsNullOrEmpty(ammo.Content)) return true;
             try
             {
-                CmdsQueue.Enqueue(new AttackCommand() { MyAmmo = ammo, Mode = mode });
+                CmdsQueue.Enqueue(new AttackCommand() { MyAmmo = ammo, Mode = mode, Enemy = enemy });
             }
             catch
             {
@@ -239,7 +238,6 @@ namespace Silancer
             Name = tempDic["Name"];
             Key = tempDic["Key"];
             Cookie = tempDic["Cookie"];
-            Authorization = GetAuth(Cookie);
             try
             {
                 Onbehalfofuser = tempDic["Onbehalfofuser"];
@@ -258,45 +256,6 @@ namespace Silancer
             MyThread = null;
         }
         #endregion
-    }
-    public class Enemy
-    {
-        public string ChannelID { get; set; }
-        public string LiveID { get; set; }
-        public string Params
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_param))
-                    _param = GetParams(ChannelID, LiveID);
-                return _param;
-            }
-        }
-
-        private string _param = null;
-        public string GetParams(string channelID, string liveID)
-        {
-            var a = Encoding.ASCII.GetBytes("\x0a\x38\x0a\x0d\x0a\x0b");
-            var b = Encoding.ASCII.GetBytes("*'\x0a\x18");
-            var c = Encoding.ASCII.GetBytes("\x12\x0b");
-            var d = Encoding.ASCII.GetBytes("\x10\x01\x18\x04");
-            var channelCode = Encoding.UTF8.GetBytes(channelID);
-            var liveCode = Encoding.UTF8.GetBytes(liveID);
-            byte[] src = new byte[a.Length + b.Length + c.Length + d.Length + 2 * liveCode.Length + channelCode.Length];
-            int pnt = 0;
-            List<byte[]> list = new List<byte[]> { a, liveCode, b, channelCode, c, liveCode, d };
-            foreach (var ba in list)
-            {
-                ba.CopyTo(src, pnt);
-                pnt += ba.Length;
-            }
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(Convert.ToBase64String(src).Trim('=') + "%3D")).Trim('=');
-        }
-        public Enemy(string channelID, string liveID)
-        {
-            ChannelID = channelID;
-            LiveID = liveID;
-        }
     }
     public class AttackCommand
     {

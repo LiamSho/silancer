@@ -19,7 +19,7 @@ namespace Silancer
         {
             Servant servant = new Servant();
             servant.LoadAmmos("test.txt", "test");
-            (Dictionary<string, Lancer> lancers, Dictionary<string, string> idNameMap) = LoadLancers();
+            (Dictionary<string, Lancer> lancers, Dictionary<string, string> idNameMap) = LoadLancers(Path.Combine("settings", "enemies.json"));
             float interval = 3;
             while (true)
             {
@@ -50,7 +50,7 @@ namespace Silancer
                         }
                         else
                         {
-                            for(int i = 0; i < Logs.Count; i++)
+                            for (int i = 0; i < Logs.Count; i++)
                             {
                                 Console.WriteLine(Logs[i]);
                             }
@@ -93,17 +93,17 @@ namespace Silancer
             }
         }
 
-        static (Dictionary<string, Lancer>, Dictionary<string, string>) LoadLancers(string filePath = "enemies.json")
+        static (Dictionary<string, Lancer>, Dictionary<string, string>) LoadLancers(string filePath)
         {
-            List<Dictionary<string, string>> enemies = null;
+            List<Dictionary<string, string>> lancersString = null;
             using (FileStream fs = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Write))
             using (StreamReader sr = new StreamReader(fs))
             {
-                enemies = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(sr.ReadToEnd());
+                lancersString = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(sr.ReadToEnd());
             }
             Dictionary<string, Lancer> lancers = new Dictionary<string, Lancer>();
             Dictionary<string, string> idNameMap = new Dictionary<string, string>();
-            foreach (var e in enemies)
+            foreach (var e in lancersString)
             {
                 var newLancer = new Lancer(e) { ID = Guid.NewGuid().ToString("X") };
                 newLancer.SendFailed += (s, a) => { Logs.Add(a); FailedCounter += 1; };
@@ -118,6 +118,40 @@ namespace Silancer
             }
             return (lancers, idNameMap);
         }
-    }
+        static Dictionary<string, Enemy> LoadEnemies(string filePath)
+        {
 
+        }
+
+        static (Dictionary<string, T>, Dictionary<string, string>) LoadFromJson<T>(string filePath) where T : IFromJson, new()
+        {
+            List<Dictionary<string, string>> entitiesDic = null;
+            using (FileStream fs = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Write))
+            using (StreamReader sr = new StreamReader(fs))
+            {
+                entitiesDic = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(sr.ReadToEnd());
+            }
+            Dictionary<string, T> lancers = new Dictionary<string, T>();
+            Dictionary<string, string> idNameMap = new Dictionary<string, string>();
+            foreach (var e in entitiesDic)
+            {
+                var newLancer = new T() { ID = Guid.NewGuid().ToString("X") };
+                newLancer.SendFailed += (s, a) => { Logs.Add(a); FailedCounter += 1; };
+                newLancer.SendSucceeded += (s, a) => { Logs.Add(a); SuccessCounter += 1; };
+                var tempName = newLancer.Name;
+                int counter = 1;
+                while (idNameMap.ContainsKey(tempName))
+                    tempName = $"{tempName}-{counter}";
+                newLancer.Name = tempName;
+                idNameMap[tempName] = newLancer.ID;
+                lancers[newLancer.ID] = newLancer;
+            }
+            return (lancers, idNameMap);
+        }
+    }
+    public interface IFromJson
+    {
+        public string ID { get; set; }
+        public string Name { get; set; }
+    }
 }
