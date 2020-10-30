@@ -5,7 +5,7 @@ using System.Text;
 namespace Silancer
 {
 
-    public class Enemy
+    public class Enemy:IFromJson
     {
         public string Name { get; set; }
         public string ChannelID { get; set; }
@@ -39,10 +39,21 @@ namespace Silancer
             }
             return Convert.ToBase64String(Encoding.UTF8.GetBytes(Convert.ToBase64String(src).Trim('=') + "%3D")).Trim('=');
         }
-        public Enemy(string channelID, string liveID)
+
+        public bool InitializeFromDictionary(Dictionary<string, string> iniDict)
         {
-            ChannelID = channelID;
-            LiveID = liveID;
+            try
+            {
+                ChannelID = iniDict["ChannelID"];
+                LiveID = iniDict["LiveID"];
+            }
+            catch
+            {
+                return false;
+            }
+            if (string.IsNullOrEmpty(ChannelID) || string.IsNullOrEmpty(LiveID))
+                return false;
+            return true;
         }
     }
 }

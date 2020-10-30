@@ -22,10 +22,9 @@ namespace Silancer
         public bool IsNetSuccessful { get; set; }
         public bool IsMegaAttack { get; set; } = false;
     }
-    public class Lancer : IFromJson
+    public class Lancer:IFromJson
     {
         // 本地实例身份
-        public string ID { get; set; }
         public string Name { get; set; }
         public string GetAuth(string cookie)
         {
@@ -232,22 +231,24 @@ namespace Silancer
         #endregion
 
         #region 结构与析构
-        public Lancer(Dictionary<string, string> setting)
+        public bool InitializeFromDictionary(Dictionary<string, string> iniDict)
         {
-            Dictionary<string, string> tempDic = setting;
-            Name = tempDic["Name"];
-            Key = tempDic["Key"];
-            Cookie = tempDic["Cookie"];
             try
             {
-                Onbehalfofuser = tempDic["Onbehalfofuser"];
+                Name = iniDict["Name"];
+                Key = iniDict["Key"];
+                Cookie = iniDict["Cookie"];
+                Onbehalfofuser = iniDict["Onbehalfofuser"];
             }
             catch
             {
-
+                return false;
             }
+            if (string.IsNullOrEmpty(Cookie) || string.IsNullOrEmpty("Key") || string.IsNullOrEmpty("Name"))
+                return false;
             MyThread = new Thread(new ThreadStart(Thread_ReadingIn));
             MyThread.Start();
+            return true;
         }
         ~Lancer()
         {

@@ -349,3 +349,5 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 /Silancer/enemies - 副本.json
+/Silancer/settings/lancers - 复制.json
+/Silancer/settings/enemies - 副本.json

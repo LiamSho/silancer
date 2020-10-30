@@ -18,140 +18,120 @@ namespace Silancer
         static void Main(string[] args)
         {
             Servant servant = new Servant();
-            servant.LoadAmmos("test.txt", "test");
-            (Dictionary<string, Lancer> lancers, Dictionary<string, string> idNameMap) = LoadLancers(Path.Combine("settings", "enemies.json"));
+            servant.LoadAmmos(Path.Combine("settings", "test.txt"), "test");
+            Dictionary<string, Lancer> lancers =
+                LoadFromJson<Lancer>(Path.Combine("settings",  "lancers.json"),
+                (newLancer) =>
+                {
+                    newLancer.SendFailed += (s, a) => { Logs.Add(a); FailedCounter += 1; };
+                    newLancer.SendSucceeded += (s, a) => { Logs.Add(a); SuccessCounter += 1; };
+                });
+            Dictionary<string, Enemy> enemies =
+                LoadFromJson<Enemy>(Path.Combine("settings", "enemies.json"));
+
             float interval = 3;
             while (true)
             {
-                string cmdString = Console.ReadLine();
-
-                string[] commandFormat = cmdString.Split(" ");
-                switch (commandFormat[0].ToUpper())
-                {
-                    case "LISTLOGS":
-                        if (commandFormat.Length == 3)
-                        {
-                            int l;
-                            int h;
-                            try
-                            {
-                                l = Convert.ToInt32(commandFormat[1]);
-                                h = Math.Min(Convert.ToInt32(commandFormat[2]), Logs.Count - 1);
-                            }
-                            catch
-                            {
-                                Console.WriteLine("[CORE]解析LISTLOGS命令结构失败");
-                                continue;
-                            }
-                            for (int i = l; i <= h; i++)
-                            {
-                                Console.WriteLine(Logs[i]);
-                            }
-                        }
-                        else
-                        {
-                            for (int i = 0; i < Logs.Count; i++)
-                            {
-                                Console.WriteLine(Logs[i]);
-                            }
-                        }
-                        break;
-                    case "SEND":
-                        if (commandFormat.Length == 3)
-                        {
-                            int l;
-                            int h;
-                            try
-                            {
-                                l = Convert.ToInt32(commandFormat[1]);
-                                h = Math.Min(Convert.ToInt32(commandFormat[2]), Logs.Count - 1);
-                            }
-                            catch
-                            {
-                                Console.WriteLine("[CORE]解析LISTLOGS命令结构失败");
-                                continue;
-                            }
-                            for (int i = l; i <= h; i++)
-                            {
-                                Console.WriteLine(Logs[i]);
-                            }
-                        }
-                        else
-                        {
-                            Console.WriteLine("[CORE]解析SEND命令结构失败");
-                        }
-                        break;
-                }
                 if (interval > 0)
                 {
                     Thread.Sleep(100);
                     interval -= 0.1f;
                     continue;
                 }
-                lancers[idNameMap["testf"]].Command(AttackMode.Normal, servant.RandomAmmo);
+                lancers["Survivol10"].Command(AttackMode.Normal, servant.RandomAmmo, enemies["testf"]);
                 interval = 3;
+                //string cmdString = Console.ReadLine();
+
+                //string[] commandFormat = cmdString.Split(" ");
+                //switch (commandFormat[0].ToUpper())
+                //{
+                //    case "LISTLOGS":
+                //        if (commandFormat.Length == 3)
+                //        {
+                //            int l;
+                //            int h;
+                //            try
+                //            {
+                //                l = Convert.ToInt32(commandFormat[1]);
+                //                h = Math.Min(Convert.ToInt32(commandFormat[2]), Logs.Count - 1);
+                //            }
+                //            catch
+                //            {
+                //                Console.WriteLine("[CORE]解析LISTLOGS命令结构失败");
+                //                continue;
+                //            }
+                //            for (int i = l; i <= h; i++)
+                //            {
+                //                Console.WriteLine(Logs[i]);
+                //            }
+                //        }
+                //        else
+                //        {
+                //            for (int i = 0; i < Logs.Count; i++)
+                //            {
+                //                Console.WriteLine(Logs[i]);
+                //            }
+                //        }
+                //        break;
+                //    case "SEND":
+                //        if (commandFormat.Length == 3)
+                //        {
+                //            int l;
+                //            int h;
+                //            try
+                //            {
+                //                l = Convert.ToInt32(commandFormat[1]);
+                //                h = Math.Min(Convert.ToInt32(commandFormat[2]), Logs.Count - 1);
+                //            }
+                //            catch
+                //            {
+                //                Console.WriteLine("[CORE]解析LISTLOGS命令结构失败");
+                //                continue;
+                //            }
+                //            for (int i = l; i <= h; i++)
+                //            {
+                //                Console.WriteLine(Logs[i]);
+                //            }
+                //        }
+                //        else
+                //        {
+                //            Console.WriteLine("[CORE]解析SEND命令结构失败");
+                //        }
+                //        break;
+                //}
             }
         }
-
-        static (Dictionary<string, Lancer>, Dictionary<string, string>) LoadLancers(string filePath)
+        static Dictionary<string, TEntity> LoadFromJson<TEntity>(string filePath, Action<TEntity> bindingFunc = null) where TEntity : IFromJson, new()
         {
-            List<Dictionary<string, string>> lancersString = null;
+            List<Dictionary<string, string>> iniDicts = null;
             using (FileStream fs = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Write))
             using (StreamReader sr = new StreamReader(fs))
             {
-                lancersString = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(sr.ReadToEnd());
+                iniDicts = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(sr.ReadToEnd());
             }
-            Dictionary<string, Lancer> lancers = new Dictionary<string, Lancer>();
-            Dictionary<string, string> idNameMap = new Dictionary<string, string>();
-            foreach (var e in lancersString)
+            var entities = new Dictionary<string, TEntity>();
+            foreach (var e in iniDicts)
             {
-                var newLancer = new Lancer(e) { ID = Guid.NewGuid().ToString("X") };
-                newLancer.SendFailed += (s, a) => { Logs.Add(a); FailedCounter += 1; };
-                newLancer.SendSucceeded += (s, a) => { Logs.Add(a); SuccessCounter += 1; };
-                var tempName = newLancer.Name;
+                var newEntity = new TEntity();
+                newEntity.InitializeFromDictionary(e);
+                bindingFunc?.Invoke(newEntity);
+                var tempName = e["Name"];
                 int counter = 1;
-                while (idNameMap.ContainsKey(tempName))
+                if (entities.ContainsKey(tempName))
+                {
+                    while (entities.ContainsKey($"{tempName}-{counter}"))
+                        counter++;
                     tempName = $"{tempName}-{counter}";
-                newLancer.Name = tempName;
-                idNameMap[tempName] = newLancer.ID;
-                lancers[newLancer.ID] = newLancer;
+                }
+                newEntity.Name = tempName;
+                entities[tempName] = newEntity;
             }
-            return (lancers, idNameMap);
-        }
-        static Dictionary<string, Enemy> LoadEnemies(string filePath)
-        {
-
-        }
-
-        static (Dictionary<string, T>, Dictionary<string, string>) LoadFromJson<T>(string filePath) where T : IFromJson, new()
-        {
-            List<Dictionary<string, string>> entitiesDic = null;
-            using (FileStream fs = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Write))
-            using (StreamReader sr = new StreamReader(fs))
-            {
-                entitiesDic = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(sr.ReadToEnd());
-            }
-            Dictionary<string, T> lancers = new Dictionary<string, T>();
-            Dictionary<string, string> idNameMap = new Dictionary<string, string>();
-            foreach (var e in entitiesDic)
-            {
-                var newLancer = new T() { ID = Guid.NewGuid().ToString("X") };
-                newLancer.SendFailed += (s, a) => { Logs.Add(a); FailedCounter += 1; };
-                newLancer.SendSucceeded += (s, a) => { Logs.Add(a); SuccessCounter += 1; };
-                var tempName = newLancer.Name;
-                int counter = 1;
-                while (idNameMap.ContainsKey(tempName))
-                    tempName = $"{tempName}-{counter}";
-                newLancer.Name = tempName;
-                idNameMap[tempName] = newLancer.ID;
-                lancers[newLancer.ID] = newLancer;
-            }
-            return (lancers, idNameMap);
+            return entities;
         }
     }
     public interface IFromJson
     {
-        public string ID { get; set; }
         public string Name { get; set; }
+        public bool InitializeFromDictionary(Dictionary<string, string> iniDict);
     }
 }
