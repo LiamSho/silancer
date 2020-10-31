@@ -14,7 +14,7 @@ namespace Silancer
     class Program
     {
         static ulong SuccessCounter = 0, FailedCounter = 0;
-        private static List<LancerSendResult> Logs { get; set; } = new List<LancerSendResult>();
+        private static List<LancerSendResult> Results { get; set; } = new List<LancerSendResult>();
         static void Main(string[] args)
         {
             Servant servant = new Servant();
@@ -23,8 +23,8 @@ namespace Silancer
                 LoadFromJson<Lancer>(Path.Combine("settings",  "lancers.json"),
                 (newLancer) =>
                 {
-                    newLancer.SendFailed += (s, a) => { Logs.Add(a); FailedCounter += 1; };
-                    newLancer.SendSucceeded += (s, a) => { Logs.Add(a); SuccessCounter += 1; };
+                    newLancer.SendFailed += (s, a) => { Results.Add(a); FailedCounter += 1; };
+                    newLancer.SendSucceeded += (s, a) => { Results.Add(a); SuccessCounter += 1; };
                 });
             Dictionary<string, Enemy> enemies =
                 LoadFromJson<Enemy>(Path.Combine("settings", "enemies.json"));
@@ -129,6 +129,7 @@ namespace Silancer
             return entities;
         }
     }
+    
     public interface IFromJson
     {
         public string Name { get; set; }

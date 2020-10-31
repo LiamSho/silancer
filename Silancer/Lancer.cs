@@ -21,22 +21,13 @@ namespace Silancer
         public bool IsSendSuccessful { get; set; }
         public bool IsNetSuccessful { get; set; }
         public bool IsMegaAttack { get; set; } = false;
+        public bool IsInnerException { get; set; } = false;
     }
-    public class Lancer:IFromJson
+    public class Lancer : IFromJson
     {
+        public bool IsAlive { get => MyThread.IsAlive; }
         // 本地实例身份
         public string Name { get; set; }
-        public string GetAuth(string cookie)
-        {
-            string time = ((DateTime.Now.ToUniversalTime().Ticks - 621355968000000000) / 10000000).ToString();
-            StringBuilder sub = new StringBuilder();
-            foreach (var t in SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes($"{time} {Regex.Match(cookie, @"SAPISID=(.*?);").Groups[1]} https://www.youtube.com")))
-            {
-                sub.Append(t.ToString("X2"));
-            }
-            return $"SAPISIDHASH {time}_{sub.ToString().ToLower()}";
-        }
-        public string _auth = "";
 
         // WEB参数
         public string Key
@@ -50,17 +41,28 @@ namespace Silancer
             }
         }
         private string key = "";
-        public string Host { get; set; }
+        public string Host { get; private set; }
         public string Cookie { get; set; }
         public string Authorization
         {
             get
             {
-                if (string.IsNullOrEmpty(_auth))
-                    _auth = GetAuth(Cookie);
-                return _auth;
+                if (string.IsNullOrEmpty(_authorization))
+                    _authorization = GetAuth(Cookie);
+                return _authorization;
             }
         }
+        public string GetAuth(string cookie)
+        {
+            string time = ((DateTime.Now.ToUniversalTime().Ticks - 621355968000000000) / 10000000).ToString();
+            StringBuilder sub = new StringBuilder();
+            foreach (var t in SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes($"{time} {Regex.Match(cookie, @"SAPISID=(.*?);").Groups[1]} https://www.youtube.com")))
+            {
+                sub.Append(t.ToString("X2"));
+            }
+            return $"SAPISIDHASH {time}_{sub.ToString().ToLower()}";
+        }
+        public string _authorization = "";
         public string Onbehalfofuser { get; set; }
 
         // 私有计数器
@@ -161,7 +163,7 @@ namespace Silancer
         public ConcurrentQueue<AttackCommand> CmdsQueue { get; private set; } = new ConcurrentQueue<AttackCommand>();
         #endregion
 
-        #region 进程
+        #region 线程
         public bool ReadyToStop { get; set; } = false;
         private void Thread_ReadingIn()
         {
@@ -173,38 +175,46 @@ namespace Silancer
                 messageIndex += 1;
                 bool isNetSuccessful = false;
                 bool isSendSuccessful = false;
-                switch (cmd.Mode)
+                bool isInnerException = false;
+                try
                 {
-                    case AttackMode.Normal:
-                        {
-                            int f = SendMessage(cmd.MyAmmo.Content, cmd.Enemy);
-                            if (f < 0)
-                                continueFailedCounter += 1;
-                            else if (f == 0)
-                                isNetSuccessful = true;
-                            else
+                    switch (cmd.Mode)
+                    {
+                        case AttackMode.Normal:
                             {
-                                continueFailedCounter = 0;
-                                successCounter += 1;
-                                isNetSuccessful = true;
-                                isSendSuccessful = true;
+                                int f = SendMessage(cmd.MyAmmo.Content, cmd.Enemy);
+                                if (f < 0)
+                                    continueFailedCounter += 1;
+                                else if (f == 0)
+                                    isNetSuccessful = true;
+                                else
+                                {
+                                    continueFailedCounter = 0;
+                                    successCounter += 1;
+                                    isNetSuccessful = true;
+                                    isSendSuccessful = true;
+                                }
+                                break;
                             }
-                            break;
-                        }
-                    case AttackMode.MegaAttack:
-                        {
-                            int f = MegaAttack(cmd.MyAmmo.Content, cmd.Enemy);
-                            if (f == 0)
-                                continueFailedCounter += 1;
-                            else
+                        case AttackMode.MegaAttack:
                             {
-                                continueFailedCounter = 0;
-                                successCounter += 1;
-                                isNetSuccessful = true;
-                                isSendSuccessful = true;
+                                int f = MegaAttack(cmd.MyAmmo.Content, cmd.Enemy);
+                                if (f == 0)
+                                    continueFailedCounter += 1;
+                                else
+                                {
+                                    continueFailedCounter = 0;
+                                    successCounter += 1;
+                                    isNetSuccessful = true;
+                                    isSendSuccessful = true;
+                                }
+                                break;
                             }
-                            break;
-                        }
+                    }
+                }
+                catch
+                {
+                    isInnerException = true;
                 }
                 LancerSendResult args = new LancerSendResult()
                 {
@@ -215,10 +225,18 @@ namespace Silancer
                     SuccessCounter = successCounter,
                     IsNetSuccessful = isNetSuccessful,
                     IsSendSuccessful = isSendSuccessful,
-                    ContinueFailedCounter = continueFailedCounter
+                    ContinueFailedCounter = continueFailedCounter,
+                    IsInnerException = isInnerException
                 };
-                if (isNetSuccessful && isSendSuccessful) SendSucceeded?.Invoke(this, args);
-                else SendFailed.Invoke(this, args);
+                try
+                {
+                    if (isNetSuccessful && isSendSuccessful) SendSucceeded?.Invoke(this, args);
+                    else SendFailed.Invoke(this, args);
+                }
+                catch
+                {
+
+                }
             }
         }
         public Thread MyThread { get; private set; }
