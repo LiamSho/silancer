@@ -7,12 +7,21 @@
 
   <ItemGroup>
     <None Remove="enemies.json" />
+    <None Remove="settings.json" />
+    <None Remove="settings\.json" />
+    <None Remove="settings\ammos\test.txt" />
     <None Remove="settings\lancers - 复制.json" />
     <None Remove="settings\lancers.json" />
     <None Remove="test.txt" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="settings\ammos\test.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="settings\enemies.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -20,9 +29,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="settings\lancers.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="settings\test.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

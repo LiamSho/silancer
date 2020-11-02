@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Security.Cryptography;
@@ -11,6 +12,11 @@ using System.Threading.Tasks;
 
 namespace Silancer
 {
+    public enum AmmoMode
+    {
+        Random,
+        Loop
+    }
     public class LancerSendResult : EventArgs
     {
         public ulong MessageIndex { get; set; }
@@ -146,97 +152,100 @@ namespace Silancer
             cancellationTokenSource.Cancel();
             return counter;
         }
-        #region 命令
-        public bool Command(AttackMode mode, Ammo ammo, Enemy enemy)
-        {
-            if (string.IsNullOrEmpty(ammo.Content)) return true;
-            try
-            {
-                CmdsQueue.Enqueue(new AttackCommand() { MyAmmo = ammo, Mode = mode, Enemy = enemy });
-            }
-            catch
-            {
-                return false;
-            }
-            return true;
-        }
-        public ConcurrentQueue<AttackCommand> CmdsQueue { get; private set; } = new ConcurrentQueue<AttackCommand>();
-        #endregion
 
         #region 线程
         public bool ReadyToStop { get; set; } = false;
+        public int MaxInterval { get; set; } = 3000;
+        private long coolDown = 0;
+        public AmmoMode ShootMode { get; set; } = AmmoMode.Random;
+        public Servant MyServant { get; set; } = null;
+        public int LoopAmmoPointer { get; set; } = 0;
+        public string LoopAmmoList { get; set; }
+        public Enemy MyEnemy { get; set; } = null;
         private void Thread_ReadingIn()
         {
             while (!ReadyToStop)
             {
-                while (CmdsQueue.Count < 1) Thread.Sleep(40);
-                if (!CmdsQueue.TryDequeue(out AttackCommand cmd)) continue;
-                if (string.IsNullOrEmpty(cmd.MyAmmo.Content)) continue;
-                messageIndex += 1;
-                bool isNetSuccessful = false;
-                bool isSendSuccessful = false;
-                bool isInnerException = false;
                 try
                 {
-                    switch (cmd.Mode)
+                    while (coolDown > 0 || MyServant == null || MyEnemy == null) 
                     {
-                        case AttackMode.Normal:
-                            {
-                                int f = SendMessage(cmd.MyAmmo.Content, cmd.Enemy);
-                                if (f < 0)
-                                    continueFailedCounter += 1;
-                                else if (f == 0)
-                                    isNetSuccessful = true;
-                                else
-                                {
-                                    continueFailedCounter = 0;
-                                    successCounter += 1;
-                                    isNetSuccessful = true;
-                                    isSendSuccessful = true;
-                                }
-                                break;
-                            }
-                        case AttackMode.MegaAttack:
-                            {
-                                int f = MegaAttack(cmd.MyAmmo.Content, cmd.Enemy);
-                                if (f == 0)
-                                    continueFailedCounter += 1;
-                                else
-                                {
-                                    continueFailedCounter = 0;
-                                    successCounter += 1;
-                                    isNetSuccessful = true;
-                                    isSendSuccessful = true;
-                                }
-                                break;
-                            }
+                        //Console.WriteLine($"cd {coolDown} | servant {MyServant!=null} | enemy {MyEnemy!=null}");
+                        Thread.Sleep(40); 
+                        coolDown -= 40; 
                     }
-                }
-                catch
-                {
-                    isInnerException = true;
-                }
-                LancerSendResult args = new LancerSendResult()
-                {
-                    MyAmmo = cmd.MyAmmo,
-                    MessageIndex = messageIndex,
-                    IsMegaAttack = cmd.Mode == AttackMode.MegaAttack,
-                    SendCounter = sendCounter,
-                    SuccessCounter = successCounter,
-                    IsNetSuccessful = isNetSuccessful,
-                    IsSendSuccessful = isSendSuccessful,
-                    ContinueFailedCounter = continueFailedCounter,
-                    IsInnerException = isInnerException
-                };
-                try
-                {
-                    if (isNetSuccessful && isSendSuccessful) SendSucceeded?.Invoke(this, args);
-                    else SendFailed.Invoke(this, args);
-                }
-                catch
-                {
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
+                    messageIndex += 1;
+                    bool isNetSuccessful = false;
+                    bool isSendSuccessful = false;
+                    bool isInnerException = false;
+                    Ammo thisAmmo = null;
+                    switch (ShootMode)
+                    {
+                        case AmmoMode.Random:
+                            thisAmmo = MyServant.RandomAmmo;
+                            break;
+                        case AmmoMode.Loop:
+                            try
+                            {
+                                (thisAmmo, LoopAmmoPointer) = MyServant.LoopAmmo(LoopAmmoPointer, LoopAmmoList);
+                            }
+                            catch
+                            {
+                                thisAmmo = MyServant.RandomAmmo;
+                            }
+                            break;
+                    }
+                    try
+                    {
+                        int f = -1;
+                        if (ShootMode == AmmoMode.Random)
+                            f = SendMessage(thisAmmo.Content, MyEnemy);
+                        if (f < 0)
+                            continueFailedCounter += 1;
+                        else if (f == 0)
+                            isNetSuccessful = true;
+                        else
+                        {
+                            continueFailedCounter = 0;
+                            successCounter += 1;
+                            isNetSuccessful = true;
+                            isSendSuccessful = true;
+                        }
+                    }
+                    catch
+                    {
+                        isInnerException = true;
+                    }
+                    LancerSendResult args = new LancerSendResult()
+                    {
+                        MyAmmo = thisAmmo,
+                        MessageIndex = messageIndex,
+                        SendCounter = sendCounter,
+                        SuccessCounter = successCounter,
+                        IsNetSuccessful = isNetSuccessful,
+                        IsSendSuccessful = isSendSuccessful,
+                        ContinueFailedCounter = continueFailedCounter,
+                        IsInnerException = isInnerException
+                    };
+                    if (args.IsNetSuccessful) coolDown = MaxInterval;
+                    try
+                    {
+                        if (isNetSuccessful && isSendSuccessful) SendSucceeded?.Invoke(this, args);
+                        else SendFailed.Invoke(this, args);
+                    }
+                    catch
+                    {
 
+                    }
+                    coolDown -= sw.ElapsedMilliseconds;
                 }
+                catch
+                {
+                    coolDown = MaxInterval;
+                }
+                
             }
         }
         public Thread MyThread { get; private set; }

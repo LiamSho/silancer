@@ -13,92 +13,187 @@ namespace Silancer
 {
     class Program
     {
-        static ulong SuccessCounter = 0, FailedCounter = 0;
-        private static List<LancerSendResult> Results { get; set; } = new List<LancerSendResult>();
+        private class GlobalSettings
+        {
+            public string Ammos_Folder { get; set; }
+            public string Lancers_Json_Path { get; set; }
+            public string Enemies_Json_Path { get; set; }
+            public static GlobalSettings LoadSettings(string path)
+            {
+                if (!File.Exists(path))
+                    return null;
+                GlobalSettings ret = new GlobalSettings();
+                try
+                {
+                    using var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var sr = new StreamReader(fs);
+                    Dictionary<string, string> tempDic = JsonConvert.DeserializeObject<Dictionary<string, string>>(sr.ReadToEnd());
+                    if (tempDic.ContainsKey("Ammos_Folder")) ret.Ammos_Folder = tempDic["Ammos_Folder"];
+                    if (tempDic.ContainsKey("Lancers_Json_Path")) ret.Lancers_Json_Path = tempDic["Lancers_Json_Path"];
+                    if (tempDic.ContainsKey("Enemies_Json_Path")) ret.Enemies_Json_Path = tempDic["Enemies_Json_Path"];
+                }
+                catch
+                {
+                    return null;
+                }
+                return ret;
+            }
+            public static bool SaveSettings(string path, GlobalSettings settings)
+            {
+                try
+                {
+                    FileStream fs = null;
+                    if (!File.Exists(path))
+                        fs = File.Create(path);
+                    else
+                        fs = File.OpenWrite(path);
+                    using var sw = new StreamWriter(fs);
+                    sw.Write(JsonConvert.SerializeObject(settings));
+                    fs.Flush();
+                    fs.Close();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+
+            }
+        }
         static void Main(string[] args)
         {
+            if (Thread.CurrentThread.CurrentCulture.Name != "zh-CN")
+            {
+                Console.WriteLine("请使用简体中文系统来运行该程序");
+                return;
+            }
+            string mainSettingsFilePath = "";
+            if (args.Length<1)
+            {
+                Console.WriteLine("未输入主配置文件路径，将使用缺省值settings.json代替");
+                mainSettingsFilePath = "settings.json";
+            }
+            else
+            {
+                if (!File.Exists(args[0]))
+                {
+                    Console.WriteLine($"输入的主配置文件路径({args[0]})不可用，程序已退出");
+                    Environment.Exit(-1);
+                }
+                mainSettingsFilePath = args[0];
+            }
+
+            
+            GlobalSettings settings = GlobalSettings.LoadSettings(mainSettingsFilePath);
+            if (settings == null)
+            {
+                Console.WriteLine("主配置文件settings.json解析失败，程序已退出");
+                Environment.Exit(-1);
+            }
+
+            if (!Directory.Exists(settings.Ammos_Folder))
+            {
+                Console.WriteLine($"弹药库路径({settings.Ammos_Folder})不可用，程序已退出");
+                Environment.Exit(-1);
+            }
             Servant servant = new Servant();
-            servant.LoadAmmos(Path.Combine("settings", "test.txt"), "test");
+            foreach (var f in Directory.GetFiles(settings.Ammos_Folder))
+            {
+                int tcounter = servant.LoadAmmos(f, Path.GetFileNameWithoutExtension(f));
+                if (tcounter > 0)
+                {
+                    Console.WriteLine($"弹药库-{Path.GetFileNameWithoutExtension(f)}-装载成功，共读入{tcounter}条记录");
+                }
+                else
+                {
+                    switch (tcounter)
+                    {
+                        case -1:
+                            Console.WriteLine($"弹药库-{Path.GetFileNameWithoutExtension(f)}-文件不可用，已跳过");
+                            continue;
+                    }
+                }
+            }
+            
+
             Dictionary<string, Lancer> lancers =
-                LoadFromJson<Lancer>(Path.Combine("settings",  "lancers.json"),
+                LoadFromJson<Lancer>(Path.Combine("settings", "lancers.json"),
                 (newLancer) =>
                 {
-                    newLancer.SendFailed += (s, a) => { Results.Add(a); FailedCounter += 1; };
-                    newLancer.SendSucceeded += (s, a) => { Results.Add(a); SuccessCounter += 1; };
+                    newLancer.MyServant = servant;
+                    newLancer.SendFailed += (s, a) => { Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}][{s.Name}][{(a.IsNetSuccessful ? (a.IsSendSuccessful ? "SU" : "SE") : "NE")}|{a.MessageIndex}]{a.MyAmmo.Content}"); };
+                    newLancer.SendSucceeded += (s, a) => { Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}][{s.Name}][{(a.IsNetSuccessful ? (a.IsSendSuccessful ? "SU" : "SE") : "NE")}|{a.MessageIndex}]{a.MyAmmo.Content}"); };
                 });
             Dictionary<string, Enemy> enemies =
                 LoadFromJson<Enemy>(Path.Combine("settings", "enemies.json"));
 
-            float interval = 3;
             while (true)
             {
-                if (interval > 0)
-                {
-                    Thread.Sleep(100);
-                    interval -= 0.1f;
-                    continue;
-                }
-                lancers["Survivol10"].Command(AttackMode.Normal, servant.RandomAmmo, enemies["testf"]);
-                interval = 3;
-                //string cmdString = Console.ReadLine();
+                string cmdString = Console.ReadLine();
 
-                //string[] commandFormat = cmdString.Split(" ");
-                //switch (commandFormat[0].ToUpper())
-                //{
-                //    case "LISTLOGS":
-                //        if (commandFormat.Length == 3)
-                //        {
-                //            int l;
-                //            int h;
-                //            try
-                //            {
-                //                l = Convert.ToInt32(commandFormat[1]);
-                //                h = Math.Min(Convert.ToInt32(commandFormat[2]), Logs.Count - 1);
-                //            }
-                //            catch
-                //            {
-                //                Console.WriteLine("[CORE]解析LISTLOGS命令结构失败");
-                //                continue;
-                //            }
-                //            for (int i = l; i <= h; i++)
-                //            {
-                //                Console.WriteLine(Logs[i]);
-                //            }
-                //        }
-                //        else
-                //        {
-                //            for (int i = 0; i < Logs.Count; i++)
-                //            {
-                //                Console.WriteLine(Logs[i]);
-                //            }
-                //        }
-                //        break;
-                //    case "SEND":
-                //        if (commandFormat.Length == 3)
-                //        {
-                //            int l;
-                //            int h;
-                //            try
-                //            {
-                //                l = Convert.ToInt32(commandFormat[1]);
-                //                h = Math.Min(Convert.ToInt32(commandFormat[2]), Logs.Count - 1);
-                //            }
-                //            catch
-                //            {
-                //                Console.WriteLine("[CORE]解析LISTLOGS命令结构失败");
-                //                continue;
-                //            }
-                //            for (int i = l; i <= h; i++)
-                //            {
-                //                Console.WriteLine(Logs[i]);
-                //            }
-                //        }
-                //        else
-                //        {
-                //            Console.WriteLine("[CORE]解析SEND命令结构失败");
-                //        }
-                //        break;
-                //}
+                string[] commandFormat = cmdString.Split(" ");
+                switch (commandFormat[0].ToUpper())
+                {
+                    case "CREATE":
+                        if (commandFormat.Length >= 5)
+                        {
+                            if (!lancers.ContainsKey(commandFormat[2]))
+                            {
+                                Console.WriteLine($"[CORE]不存在名为{commandFormat[2]}的Lancer");
+                                continue;
+                            }
+                            var curLancer = lancers[commandFormat[2]];
+                            if (!enemies.ContainsKey(commandFormat[3]))
+                            {
+                                Console.WriteLine($"[CORE]不存在名为{commandFormat[2]}的Enemy");
+                                continue;
+                            }
+                            curLancer.MyEnemy = enemies[commandFormat[3]];
+                            try
+                            {
+                                curLancer.MaxInterval = Math.Max(100, Math.Abs(Convert.ToInt32(commandFormat[1])));
+                            }
+                            catch
+                            {
+                                Console.WriteLine($"[CORE]Maxinterval必须是一个正整数");
+                                continue;
+                            }
+                            switch (commandFormat[4].ToUpper())
+                            {
+                                default:
+                                    curLancer.ShootMode = AmmoMode.Random;
+                                    break;
+                                case "LOOP":
+                                    curLancer.LoopAmmoPointer = 0;
+                                    curLancer.ShootMode = AmmoMode.Loop;
+                                    break;
+                            }
+                            if (commandFormat.Length >= 6)
+                            {
+                                curLancer.LoopAmmoList = commandFormat[5];
+                            }
+                            else
+                            {
+                                curLancer.LoopAmmoList = null;
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("[CORE]解析CREATE命令结构失败");
+                        }
+                        break;
+                    case "PAUSE":
+                        if (commandFormat.Length >= 2)
+                        {
+                            if (!lancers.ContainsKey(commandFormat[1]))
+                            {
+                                Console.WriteLine($"[CORE]不存在名为{commandFormat[1]}的Lancer");
+                                continue;
+                            }
+                            lancers[commandFormat[1]].MyEnemy = null;
+                        }
+                        break;
+                }
             }
         }
         static Dictionary<string, TEntity> LoadFromJson<TEntity>(string filePath, Action<TEntity> bindingFunc = null) where TEntity : IFromJson, new()
@@ -129,7 +224,7 @@ namespace Silancer
             return entities;
         }
     }
-    
+
     public interface IFromJson
     {
         public string Name { get; set; }

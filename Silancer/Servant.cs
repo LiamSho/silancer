@@ -11,6 +11,21 @@ namespace Silancer
         public List<Ammo> AllAmmos { get; private set; } = new List<Ammo>() { new Ammo("TEST INFO") };
         private readonly Random random = new Random();
         public Ammo RandomAmmo { get => AllAmmos[random.Next(0, AllAmmos.Count)]; }
+        public (Ammo,int) LoopAmmo(int at,string listName= null)
+        {
+            if (listName == null) 
+            {
+                if (at >= AllAmmos.Count)
+                    at = 0;
+                return (AllAmmos[at], at + 1);
+            }
+            else
+            {
+                if (at >= AmmosDictionary[listName].Count)
+                    at = 0;
+                return (AmmosDictionary[listName][at], at + 1);
+            }
+        }
         public Ammo GetAmmo(string listName, int index) => AmmosDictionary[listName][index];
         public int LoadAmmos(string filePath,string listName, AmmoType type = AmmoType.Plain)
         {
