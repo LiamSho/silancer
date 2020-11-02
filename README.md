@@ -24,15 +24,66 @@ Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上
 
 ## 快速开始
 1. 启动命令行
-### Windows
-在Windows下可以直接运行silancer.exe启动命令行
-### Linux
-使用dotnet silancer.dll
+    - **Windows**
+    
+    在Windows下可以直接运行silancer.exe启动命令行
+    
+    - **Linux**
+    
+    使用dotnet silancer.dll
 
 2. 配置文件
     - **主配置文件**
 
     主配置文件必须位于可执行文件运行时的工作目录下，且文件名必须为`settings.json`
+    
+    该文件应该以json字符串形式存储，json字符串中应该包含一个字典，其中包括名为`Lancers_Json_Path`、`Enemies_Json_Path`、`Ammos_Folder`的三个元素，分别用于存储Lancers配置文件的位置，Enemies配置文件的位置和Ammos文件夹的位置
+    
+    主配置文件用于指示程序从哪些位置读取Lancer、Enemy和Ammos列表
+    
+    - **Lancers配置文件**
+    
+    Lancers配置文件中应该以json字符串形式存储，其中内容将被直接逆序列化为一个List<Dictionary<string,string>>并且随后逐个元素被解析为Lancer
+    
+    每个列表元素都应该是一个字典，并且每个字典中应该包含以下元素：
+    
+        - **Name**
+        
+        用于在程序内辨识该Lancer，如果发生重复，则会自动添加后缀
+        
+        - **Key**
+        
+        谷歌下发的固定令牌，一般不发生改变，可以从发送消息的包中获得
+        
+        - **Cookie**
+        
+        当前帐号的Cookie，可以从发送消息的包Headers中获得
+        
+        - **Onbehalfofuser**
+        
+        当使用非主频道时，发送消息的包负载中会出现该参数，目前该参数是否必需仍需观察
+    
+    - **Enemies配置文件**
+       
+    Enemies配置文件中应该以json字符串形式存储，其中内容将被直接逆序列化为一个List<Dictionary<string,string>>并且随后逐个元素被解析为Enemy
+    
+    每个列表元素都应该是一个字典，并且每个字典中应该包含以下元素：
+    
+        - **Name**
+        
+        用于在程序内辨识该Enemy，Name应该唯一
+        
+        - **ChannelID**
+        
+        ChannelID是YTB用于区分Youtuber的字符串，可以从Youtuber的首页URL中获取，该参数一般不会改变
+        
+        - **LiveID**
+        
+        LiveID是每次直播的唯一标识符，可以从直播页面URL中获取，每次直播该参数都会改变
+
+    - **Ammos文件夹**
+    
+    Ammos文件夹用于存储弹药，所有弹药应该以文本文件存储，每个文件都会被Servant自动化分为一个库，每个文件内的每一非空行都被视为一发弹药
 
 3. 发布攻击命令
 使用命令CREATE Interval LancerName EnemyName AmmosMode \[AmmosListName\]来使一个Lancer发起攻击，各参数详细释义已在下方给出：
