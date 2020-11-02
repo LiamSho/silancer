@@ -23,6 +23,8 @@ Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上
 对于Linux的各种发行版系统，请参照 [在 Linux 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/linux)
 
 ## 快速开始
+[下载早期可执行Release版本](https://github.com/D-Walter/silancer/releases/download/Alpha/Silancer.7z)
+
 使用默认配置情况下，编辑settings/lancers.json中填写Name、Key和Cookie
 
 > [
@@ -59,7 +61,9 @@ Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上
 
 将需要使用的弹药放入settings/ammos文件夹下
 
-运行程序，输入命令 `Create 15000 MyLancer MyEnemy Random` 即可开始发起每15秒从所有弹药中随机挑选一条的评论自动发送
+运行`Silancer.exe`，输入命令 `Create 15000 MyLancer MyEnemy Random` 即可开始发起每15秒从所有弹药中随机挑选一条的评论自动发送
+
+输入命令 `Pause MyLancer` 来停止该Lancer运行
 
 ## 详细配置
 1. 启动命令行
