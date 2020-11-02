@@ -23,6 +23,45 @@ Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上
 对于Linux的各种发行版系统，请参照 [在 Linux 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/linux)
 
 ## 快速开始
+使用默认配置情况下，编辑settings/lancers.json中填写Name、Key和Cookie
+
+> [
+
+> {
+
+>   "Name": "MyLancer",
+
+>   "Key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+
+>   "Cookie": "填入您的Cookie",
+
+>   "Onbehalfofuser": ""
+
+> }
+
+>]
+
+编辑settings/enemies.json中填写Name、ChannelID、LiveID（该配置对应 [桐生可可的自由聊天室](https://www.youtube.com/watch?v=WinQpGPnSdI)）
+
+> [
+
+> {
+
+>   "Name": "MyEnemy",
+
+>   "ChannelID": "UCS9uQI-jC3DE0L4IpXyvr6w",
+
+>   "LiveID": "WinQpGPnSdI"
+
+> }
+
+>]
+
+将需要使用的弹药放入settings/ammos文件夹下
+
+运行程序，输入命令 `Create 15000 MyLancer MyEnemy Random` 即可开始发起每15秒从所有弹药中随机挑选一条的评论自动发送
+
+## 详细配置
 1. 启动命令行
     - **Windows**
     
@@ -47,19 +86,19 @@ Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上
     
     每个列表元素都应该是一个字典，并且每个字典中应该包含以下元素：
     
-        - **Name**
+        - Name
         
         用于在程序内辨识该Lancer，如果发生重复，则会自动添加后缀
         
-        - **Key**
+        - Key
         
         谷歌下发的固定令牌，一般不发生改变，可以从发送消息的包中获得
         
-        - **Cookie**
+        - Cookie
         
         当前帐号的Cookie，可以从发送消息的包Headers中获得
         
-        - **Onbehalfofuser**
+        - Onbehalfofuser
         
         当使用非主频道时，发送消息的包负载中会出现该参数，目前该参数是否必需仍需观察
     
@@ -69,15 +108,15 @@ Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上
     
     每个列表元素都应该是一个字典，并且每个字典中应该包含以下元素：
     
-        - **Name**
+        - Name
         
         用于在程序内辨识该Enemy，Name应该唯一
         
-        - **ChannelID**
+        - ChannelID
         
         ChannelID是YTB用于区分Youtuber的字符串，可以从Youtuber的首页URL中获取，该参数一般不会改变
         
-        - **LiveID**
+        - LiveID
         
         LiveID是每次直播的唯一标识符，可以从直播页面URL中获取，每次直播该参数都会改变
 
