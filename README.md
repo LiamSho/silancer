@@ -26,35 +26,35 @@ Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上
 使用默认配置情况下，编辑settings/lancers.json中填写Name、Key和Cookie
 
 > [
-
+>
 > {
-
+>
 >   "Name": "MyLancer",
-
+>
 >   "Key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
-
+>
 >   "Cookie": "填入您的Cookie",
-
+>
 >   "Onbehalfofuser": ""
-
+>
 > }
-
+>
 >]
 
 编辑settings/enemies.json中填写Name、ChannelID、LiveID（该配置对应 [桐生可可的自由聊天室](https://www.youtube.com/watch?v=WinQpGPnSdI)）
 
 > [
-
+>
 > {
-
+>
 >   "Name": "MyEnemy",
-
+>
 >   "ChannelID": "UCS9uQI-jC3DE0L4IpXyvr6w",
-
+>
 >   "LiveID": "WinQpGPnSdI"
-
+>
 > }
-
+>
 >]
 
 将需要使用的弹药放入settings/ammos文件夹下
