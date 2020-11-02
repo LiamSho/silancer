@@ -32,8 +32,17 @@ namespace Silancer
     public class Lancer : IFromJson
     {
         public bool IsAlive { get => MyThread.IsAlive; }
-        // 本地实例身份
+        /// <summary>
+        /// 本地实例身份
+        /// </summary>
         public string Name { get; set; }
+        public Servant MyServant { get; set; } = null;
+        public AmmoMode ShootMode { get; set; } = AmmoMode.Random;
+        public int LoopAmmoPointer { get; set; } = 0;
+        public string LoopAmmoList { get; set; }
+        public Enemy MyEnemy { get; set; } = null;
+        public int MaxInterval { get; set; } = 3000;
+
 
         // WEB参数
         public string Key
@@ -155,13 +164,7 @@ namespace Silancer
 
         #region 线程
         public bool ReadyToStop { get; set; } = false;
-        public int MaxInterval { get; set; } = 3000;
         private long coolDown = 0;
-        public AmmoMode ShootMode { get; set; } = AmmoMode.Random;
-        public Servant MyServant { get; set; } = null;
-        public int LoopAmmoPointer { get; set; } = 0;
-        public string LoopAmmoList { get; set; }
-        public Enemy MyEnemy { get; set; } = null;
         private void Thread_ReadingIn()
         {
             while (!ReadyToStop)
@@ -170,7 +173,6 @@ namespace Silancer
                 {
                     while (coolDown > 0 || MyServant == null || MyEnemy == null) 
                     {
-                        //Console.WriteLine($"cd {coolDown} | servant {MyServant!=null} | enemy {MyEnemy!=null}");
                         Thread.Sleep(40); 
                         coolDown -= 40; 
                     }
@@ -232,8 +234,7 @@ namespace Silancer
                     if (args.IsNetSuccessful) coolDown = MaxInterval;
                     try
                     {
-                        if (isNetSuccessful && isSendSuccessful) SendSucceeded?.Invoke(this, args);
-                        else SendFailed.Invoke(this, args);
+                        SendComplete?.Invoke(this,args);
                     }
                     catch
                     {
@@ -253,8 +254,7 @@ namespace Silancer
 
         #region 委托与事件
         public delegate void LancerSendEventHandler(Lancer sender, LancerSendResult args);
-        public event LancerSendEventHandler SendSucceeded;
-        public event LancerSendEventHandler SendFailed;
+        public event LancerSendEventHandler SendComplete;
         #endregion
 
         #region 结构与析构
