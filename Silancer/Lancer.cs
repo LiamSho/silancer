@@ -1,5 +1,5 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using Silancer.Data;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -171,10 +171,10 @@ namespace Silancer
             {
                 try
                 {
-                    while (coolDown > 0 || MyServant == null || MyEnemy == null) 
+                    while (coolDown > 0 || MyServant == null || MyEnemy == null)
                     {
-                        Thread.Sleep(40); 
-                        coolDown -= 40; 
+                        Thread.Sleep(40);
+                        coolDown -= 40;
                     }
                     Stopwatch sw = new Stopwatch();
                     sw.Start();
@@ -234,7 +234,7 @@ namespace Silancer
                     if (args.IsNetSuccessful) coolDown = MaxInterval;
                     try
                     {
-                        SendComplete?.Invoke(this,args);
+                        SendComplete?.Invoke(this, args);
                     }
                     catch
                     {
@@ -246,7 +246,7 @@ namespace Silancer
                 {
                     coolDown = MaxInterval;
                 }
-                
+
             }
         }
         public Thread MyThread { get; private set; }

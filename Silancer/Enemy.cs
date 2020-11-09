@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Silancer.Data;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace Silancer
 {
 
-    public class Enemy:IFromJson
+    public class Enemy : IFromJson
     {
         public string Name { get; set; }
         public string ChannelID { get; set; }

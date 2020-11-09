@@ -2,19 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="enemies.json" />
-    <None Remove="settings.json" />
-    <None Remove="settings\.json" />
-    <None Remove="settings\ammos\test.txt" />
-    <None Remove="settings\lancers - 复制.json" />
-    <None Remove="settings\lancers.json" />
-    <None Remove="test.txt" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="settings.json">
@@ -26,16 +17,15 @@
     <Content Include="settings\enemies.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="settings\lancers - 复制.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Content Include="settings\lancers.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentCommandLineParser" Version="1.4.3" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="Terminal.Gui" Version="1.0.0-pre.5" />
   </ItemGroup>
 
 </Project>
