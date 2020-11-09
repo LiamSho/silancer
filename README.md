@@ -1,62 +1,43 @@
 # Silancer
 让大家一起快乐地搅浑水，成为无忧无虑地乐子人吧
 
-**该项目打击对象仅限于发表或支持损害中国任何利益的主播及其相关主播，目的仅限于破坏打击对象直播间的正常互动秩序，除此以外任何其他使用途径均非该项目创立意图**
-
-**请勿在违反任何地区法律的途径上使用，请使用者不要以违法甚至犯罪的途径表达自己合情合理合法的情感**
-
->**敬告：下载、使用、拷贝本项目源代码及可执行文件，即视为您无条件支持中华人民共和国民众及中华人民共和国政府的一切意向与决策，包括但不限于领土问题、主权问题、民族问题等**
-
->**敬告：下載、使用、拷貝本項目源代碼及可執行文件，即視為您無條件支持中華人民共和國民眾及中華人民共和國政府的一切意向與決策，包括但不限於領土問題、主權問題、民族問題等**
-
->**Warning: Downloading, using, and copying the source code or executable files of this project is deemed to be your unconditional support for all the intentions and decisions of both the people and the government of the People’s Republic of China, including but not limited to territorial issues, sovereignty issues, ethnic issues, etc.**
+**该项目仅限正常使用，请勿在违反任何地区法律的途径上使用，请乐子人不要以违法甚至犯罪的途径表达自己合情合理合法的情感**
 
 另外，桐生可可必死。
 
-## 环境需求
-Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上必须妥善安装.net Core 3.1运行时
+## Silancer.Lancer类
+实例方法`Lancer.Command(AttackMode, string)`可以向该实例传达一次“命令”
 
-对于Windows系统，请参照 [在 Windows 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/windows?tabs=netcore31)
+其中首个参数`AttackMode`是一个枚举体，`AttackMode.Normal`表示普通发言，`AttackMode.MegaAttack`表示穿甲弹
 
-对于MacOS系统，请参照 [在 macOS 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/macos)
+## Silancer.Servant类
+Servant类用于为Lancer获取弹药，这样多个Lancer在前线作战时，可以共用一个或者多个Servant组成的弹药库池
 
-对于Linux的各种发行版系统，请参照 [在 Linux 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/linux)
+弹药的基本单位是被装箱的string类Silancer.Ammo
 
-## 快速开始
-1. 启动命令行
-### Windows
-在Windows下可以直接运行silancer.exe启动命令行
-### Linux
-使用dotnet silancer.dll
+使用实例属性Servant.RandomAmmo从总弹药库中获得一个随机弹药
 
-2. 配置文件
-    - **主配置文件**
+## 配置文件
+`enemies.json`是用于存储WEB参数的配置文件，该Json文件应该包含一个列表，并且列表元素均为字典，总体形如
+>~~[{"Name": "","Key": "","Cookie": "","Authorization": "","Param": "","Onbehalfofuser": ""}]~~
 
-    主配置文件必须位于可执行文件运行时的工作目录下，且文件名必须为`settings.json`
+>[
+>  {
+>   "Name": "",
+>   "Key": "",
+>   "Cookie": "",
+>   "ChannelID": "",
+>   "LiveID": "",
+>   "Onbehalfofuser": ""
+> }
+>]
 
-3. 发布攻击命令
-使用命令CREATE Interval LancerName EnemyName AmmosMode \[AmmosListName\]来使一个Lancer发起攻击，各参数详细释义已在下方给出：
+其中，Key、Cookie、~~Authorization、Param~~ChannelID、LiveID是构造请求的必选参数，Key、Cookie~~和Authorization~~来自于头文件，~~Param来自于负载段~~
 
-    - **CREATE**
+ChannelID即为主播主页后缀，如桐生可可的直播间(https://www.youtube.com/channel/UCS9uQI-jC3DE0L4IpXyvr6w) ，其Channel为`UCS9uQI-jC3DE0L4IpXyvr6w`
 
-    命令关键词，大小写不敏感
+LiveID为直播间标识号
 
-    - **Interval**
+通过ChannelID和LiveID即可算出Param，而通过Cookie即可算出Authorization，所以此次更新更换了所需参数
 
-    发送评论间隔，单位为毫秒
-
-    - **LancerName**
-
-    此次分配的Lancer名，该名对应Lancers配置文件中的Name项，大小写敏感
-
-    - **EnemyName**
-
-    让该Lancer发动攻击的目标Enemy名，改名对应Enemies配置文件中的Name项，大小写敏感
-
-    - **AmmosMode**
-
-    装填弹药的模式，使用Random表示随机，Loop表示顺序循环，大小写不敏感
-
-    - **AmmosListName**
-
-    可选参数，指定弹药库，改名对应Ammos文件夹下的文件名
+Name是另一个必选参数，但它是用于本地识别的特殊参数，你可以使用相同的名字，但是这些名字在读入过程中会被附加尾缀
