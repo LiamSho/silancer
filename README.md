@@ -1,43 +1,156 @@
 # Silancer
 让大家一起快乐地搅浑水，成为无忧无虑地乐子人吧
 
-**该项目仅限正常使用，请勿在违反任何地区法律的途径上使用，请乐子人不要以违法甚至犯罪的途径表达自己合情合理合法的情感**
+**该项目打击对象仅限于发表或支持损害中国任何利益的主播及其相关主播，目的仅限于破坏打击对象直播间的正常互动秩序，除此以外任何其他使用途径均非该项目创立意图**
+
+**请勿在违反任何地区法律的途径上使用，请使用者不要以违法甚至犯罪的途径表达自己合情合理合法的情感**
+
+>**敬告：下载、使用、拷贝本项目源代码及可执行文件，即视为您无条件支持中华人民共和国民众及中华人民共和国政府的一切意向与决策，包括但不限于领土问题、主权问题、民族问题等**
+
+>**敬告：下載、使用、拷貝本項目源代碼及可執行文件，即視為您無條件支持中華人民共和國民眾及中華人民共和國政府的一切意向與決策，包括但不限於領土問題、主權問題、民族問題等**
+
+>**Warning: Downloading, using, and copying the source code or executable files of this project is deemed to be your unconditional support for all the intentions and decisions of both the people and the government of the People’s Republic of China, including but not limited to territorial issues, sovereignty issues, ethnic issues, etc.**
 
 另外，桐生可可必死。
 
-## Silancer.Lancer类
-实例方法`Lancer.Command(AttackMode, string)`可以向该实例传达一次“命令”
+## 环境需求
+Silancer基于.net Core 3.1完成，因此在您需要运行Silancer的设备上必须妥善安装.net Core 3.1运行时
 
-其中首个参数`AttackMode`是一个枚举体，`AttackMode.Normal`表示普通发言，`AttackMode.MegaAttack`表示穿甲弹
+对于Windows系统，请参照 [在 Windows 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/windows?tabs=netcore31)
 
-## Silancer.Servant类
-Servant类用于为Lancer获取弹药，这样多个Lancer在前线作战时，可以共用一个或者多个Servant组成的弹药库池
+对于MacOS系统，请参照 [在 macOS 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/macos)
 
-弹药的基本单位是被装箱的string类Silancer.Ammo
+对于Linux的各种发行版系统，请参照 [在 Linux 上安装 .NET Core](https://docs.microsoft.com/zh-cn/dotnet/core/install/linux)
 
-使用实例属性Servant.RandomAmmo从总弹药库中获得一个随机弹药
+## 快速开始
+[下载早期可执行Release版本](https://github.com/D-Walter/silancer/releases/download/Alpha/Silancer.7z)
 
-## 配置文件
-`enemies.json`是用于存储WEB参数的配置文件，该Json文件应该包含一个列表，并且列表元素均为字典，总体形如
->~~[{"Name": "","Key": "","Cookie": "","Authorization": "","Param": "","Onbehalfofuser": ""}]~~
+使用默认配置情况下，编辑settings/lancers.json中填写Name、Key和Cookie
 
->[
->  {
->   "Name": "",
->   "Key": "",
->   "Cookie": "",
->   "ChannelID": "",
->   "LiveID": "",
+> [
+>
+> {
+>
+>   "Name": "MyLancer",
+>
+>   "Key": "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8",
+>
+>   "Cookie": "填入您的Cookie",
+>
 >   "Onbehalfofuser": ""
+>
 > }
+>
 >]
 
-其中，Key、Cookie、~~Authorization、Param~~ChannelID、LiveID是构造请求的必选参数，Key、Cookie~~和Authorization~~来自于头文件，~~Param来自于负载段~~
+编辑settings/enemies.json中填写Name、ChannelID、LiveID（该配置对应 [桐生可可的自由聊天室](https://www.youtube.com/watch?v=WinQpGPnSdI)）
 
-ChannelID即为主播主页后缀，如桐生可可的直播间(https://www.youtube.com/channel/UCS9uQI-jC3DE0L4IpXyvr6w) ，其Channel为`UCS9uQI-jC3DE0L4IpXyvr6w`
+> [
+>
+> {
+>
+>   "Name": "MyEnemy",
+>
+>   "ChannelID": "UCS9uQI-jC3DE0L4IpXyvr6w",
+>
+>   "LiveID": "WinQpGPnSdI"
+>
+> }
+>
+>]
 
-LiveID为直播间标识号
+将需要使用的弹药放入settings/ammos文件夹下
 
-通过ChannelID和LiveID即可算出Param，而通过Cookie即可算出Authorization，所以此次更新更换了所需参数
+运行`Silancer.exe`，输入命令 `Create 15000 MyLancer MyEnemy Random` 即可开始发起每15秒从所有弹药中随机挑选一条的评论自动发送
 
-Name是另一个必选参数，但它是用于本地识别的特殊参数，你可以使用相同的名字，但是这些名字在读入过程中会被附加尾缀
+输入命令 `Pause MyLancer` 来停止该Lancer运行
+
+## 详细配置
+1. 启动命令行
+    - **Windows**
+    
+    在Windows下可以直接运行silancer.exe启动命令行
+    
+    - **Linux**
+    
+    使用dotnet silancer.dll
+
+2. 配置文件
+    - **主配置文件**
+
+    主配置文件必须位于可执行文件运行时的工作目录下，且文件名必须为`settings.json`
+    
+    该文件应该以json字符串形式存储，json字符串中应该包含一个字典，其中包括名为`Lancers_Json_Path`、`Enemies_Json_Path`、`Ammos_Folder`的三个元素，分别用于存储Lancers配置文件的位置，Enemies配置文件的位置和Ammos文件夹的位置
+    
+    主配置文件用于指示程序从哪些位置读取Lancer、Enemy和Ammos列表
+    
+    - **Lancers配置文件**
+    
+    Lancers配置文件中应该以json字符串形式存储，其中内容将被直接逆序列化为一个List<Dictionary<string,string>>并且随后逐个元素被解析为Lancer
+    
+    每个列表元素都应该是一个字典，并且每个字典中应该包含以下元素：
+    
+        - Name
+        
+        用于在程序内辨识该Lancer，如果发生重复，则会自动添加后缀
+        
+        - Key
+        
+        谷歌下发的固定令牌，一般不发生改变，可以从发送消息的包中获得
+        
+        - Cookie
+        
+        当前帐号的Cookie，可以从发送消息的包Headers中获得
+        
+        - Onbehalfofuser
+        
+        当使用非主频道时，发送消息的包负载中会出现该参数，目前该参数是否必需仍需观察
+    
+    - **Enemies配置文件**
+       
+    Enemies配置文件中应该以json字符串形式存储，其中内容将被直接逆序列化为一个List<Dictionary<string,string>>并且随后逐个元素被解析为Enemy
+    
+    每个列表元素都应该是一个字典，并且每个字典中应该包含以下元素：
+    
+        - Name
+        
+        用于在程序内辨识该Enemy，Name应该唯一
+        
+        - ChannelID
+        
+        ChannelID是YTB用于区分Youtuber的字符串，可以从Youtuber的首页URL中获取，该参数一般不会改变
+        
+        - LiveID
+        
+        LiveID是每次直播的唯一标识符，可以从直播页面URL中获取，每次直播该参数都会改变
+
+    - **Ammos文件夹**
+    
+    Ammos文件夹用于存储弹药，所有弹药应该以文本文件存储，每个文件都会被Servant自动化分为一个库，每个文件内的每一非空行都被视为一发弹药
+
+3. 发布攻击命令
+使用命令CREATE Interval LancerName EnemyName AmmosMode \[AmmosListName\]来使一个Lancer发起攻击，各参数详细释义已在下方给出：
+
+    - **CREATE**
+
+    命令关键词，大小写不敏感
+
+    - **Interval**
+
+    发送评论间隔，单位为毫秒
+
+    - **LancerName**
+
+    此次分配的Lancer名，该名对应Lancers配置文件中的Name项，大小写敏感
+
+    - **EnemyName**
+
+    让该Lancer发动攻击的目标Enemy名，改名对应Enemies配置文件中的Name项，大小写敏感
+
+    - **AmmosMode**
+
+    装填弹药的模式，使用Random表示随机，Loop表示顺序循环，大小写不敏感
+
+    - **AmmosListName**
+
+    可选参数，指定弹药库，改名对应Ammos文件夹下的文件名

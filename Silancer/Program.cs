@@ -115,22 +115,22 @@ namespace Silancer
                 }
             }
             
-
             Dictionary<string, Lancer> lancers =
-                LoadFromJson<Lancer>(Path.Combine("settings", "lancers.json"),
+                LoadFromJson<Lancer>(settings.Lancers_Json_Path,
                 (newLancer) =>
                 {
                     newLancer.MyServant = servant;
-                    newLancer.SendFailed += (s, a) => { Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}][{s.Name}][{(a.IsNetSuccessful ? (a.IsSendSuccessful ? "SU" : "SE") : "NE")}|{a.MessageIndex}]{a.MyAmmo.Content}"); };
-                    newLancer.SendSucceeded += (s, a) => { Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}][{s.Name}][{(a.IsNetSuccessful ? (a.IsSendSuccessful ? "SU" : "SE") : "NE")}|{a.MessageIndex}]{a.MyAmmo.Content}"); };
+                    newLancer.SendComplete += (s, a) => 
+                    { 
+                        Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}][{s.Name}][{(a.IsNetSuccessful ? (a.IsSendSuccessful ? "SU" : "SE") : "NE")}|{a.MessageIndex}]{a.MyAmmo.Content}"); 
+                    };
                 });
             Dictionary<string, Enemy> enemies =
-                LoadFromJson<Enemy>(Path.Combine("settings", "enemies.json"));
+                LoadFromJson<Enemy>(settings.Enemies_Json_Path);
 
             while (true)
             {
                 string cmdString = Console.ReadLine();
-
                 string[] commandFormat = cmdString.Split(" ");
                 switch (commandFormat[0].ToUpper())
                 {
