@@ -62,11 +62,8 @@ namespace Silancer
         }
         static void Main(string[] args)
         {
-            if (Thread.CurrentThread.CurrentCulture.Name != "zh-CN")
-            {
-                Console.WriteLine("请使用简体中文系统来运行该程序");
+            if (System.Globalization.CultureInfo.CurrentCulture.LCID != 2052)
                 return;
-            }
             string mainSettingsFilePath = "";
             if (args.Length<1)
             {
