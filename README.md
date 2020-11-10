@@ -9,7 +9,7 @@
 
 >**敬告：下載、使用、拷貝本項目源代碼及可執行文件，即視為您無條件支持中華人民共和國民眾及中華人民共和國政府的一切意向與決策，包括但不限於領土問題、主權問題、民族問題等**
 
->**Warning: Downloading, using, and copying the source code or executable files of this project is deemed to be your unconditional support for all the intentions and decisions of both the people and the government of the People’s Republic of China, including but not limited to territorial issues, sovereignty issues, ethnic issues, etc.**
+>**Warning: Downloading, using, or copying the source code or executable files of this project is deemed to be your unconditional support for all the intentions and decisions of both the people and the government of the People’s Republic of China, including but not limited to territorial issues, sovereignty issues, ethnic issues, etc.**
 
 另外，桐生可可必死。
 
