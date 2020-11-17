@@ -1,9 +1,11 @@
-﻿using Silancer.Data;
+﻿using Newtonsoft.Json;
+using Silancer.Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -16,6 +18,7 @@ namespace Silancer
     {
         public string Name { get; set; }
         public string Cookie { get; set; }
+        public string Onbehalfofuser { get; set; }
         public string Authorization
         {
             get
@@ -36,7 +39,6 @@ namespace Silancer
             return $"SAPISIDHASH {time}_{sub.ToString().ToLower()}";
         }
         public string _authorization = "";
-        public string Onbehalfofuser { get; set; }
 
         public bool InitializeFromDictionary(Dictionary<string, string> iniDict)
         {
@@ -67,27 +69,37 @@ namespace Silancer
         public bool IsMegaAttack { get; set; }
         public bool IsInnerException { get; set; }
     }
-    public class Lancer:IFromJson
+    public class Lancer : IFromJson
     {
-        public bool IsAlive { get => MyThread.IsAlive; }
         /// <summary>
         /// 本地实例身份
         /// </summary>
-        public string Name { get; init; }
-        public string LancerTokenName { get; init; }
-        public string ServantName { get; init; }
-
-        public Servant MyServant { get; set; }
+        public string Name { get; set; }
+        public string LancerTokenName { get; set; }
+        public string ServantName { get; set; }
+        public string EnemyName { get; set; }
         public AmmoLoadMode ShootMode { get; set; } = AmmoLoadMode.Random;
         public int LoopAmmoPointer { get; set; }
         public string LoopAmmoList { get; set; }
-        public Enemy MyEnemy { get; set; }
-        public int MaxInterval { get; set; } = 3000;
+        public int MinInterval { get; set; } = 3000;
+
+        [JsonIgnore]
+        public WithPool MyToken { get; private set; }
+        [JsonIgnore]
+        public bool IsAlive { get => MyThread.IsAlive; }
+        [JsonIgnore]
+        public Servant MyServant { get; private set; }
+        [JsonIgnore]
+        public Enemy MyEnemy { get; private set; }
 
         // 私有计数器
+        [JsonIgnore]
         private ulong messageIndex;
+        [JsonIgnore]
         private ulong successCounter;
+        [JsonIgnore]
         private ulong sendCounter;
+        [JsonIgnore]
         private ulong continueFailedCounter;
 
         /// <summary>
@@ -235,7 +247,7 @@ namespace Silancer
                         ContinueFailedCounter = continueFailedCounter,
                         IsInnerException = isInnerException
                     };
-                    if (args.IsNetSuccessful) coolDown = MaxInterval;
+                    if (args.IsNetSuccessful) coolDown = MinInterval;
                     try
                     {
                         SendComplete?.Invoke(this, args);
@@ -248,7 +260,7 @@ namespace Silancer
                 }
                 catch
                 {
-                    coolDown = MaxInterval;
+                    coolDown = MinInterval;
                 }
 
             }
@@ -264,18 +276,21 @@ namespace Silancer
         #region 结构与析构
         public bool InitializeFromDictionary(Dictionary<string, string> iniDict)
         {
-            try
+            foreach (var i in iniDict)
             {
-                Name = iniDict["Name"];
-                Key = iniDict["Key"];
-                Cookie = iniDict["Cookie"];
-                Onbehalfofuser = iniDict["Onbehalfofuser"];
+                var property = GetType().GetProperty(i.Key, BindingFlags.Public | BindingFlags.Instance);
+                if (property == null) continue;
+                try
+                {
+                    property.SetValue(this, Convert.ChangeType(i.Value, property.DeclaringType));
+                }
+                catch
+                {
+                    continue;
+                }
             }
-            catch
-            {
-                return false;
-            }
-            if (string.IsNullOrEmpty(Cookie) || string.IsNullOrEmpty("Key") || string.IsNullOrEmpty("Name"))
+            MyToken = WithPool.GetItem(LancerTokenName);
+            if (MyToken == null || string.IsNullOrEmpty("Key") || string.IsNullOrEmpty("Name"))
                 return false;
             MyThread = new Thread(new ThreadStart(Thread_ReadingIn));
             MyThread.Start();
