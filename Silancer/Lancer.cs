@@ -14,19 +14,8 @@ namespace Silancer
 {
     public class LancerToken : IFromJson
     {
+        public string Name { get; set; }
         public string Cookie { get; set; }
-        public string Key
-        {
-            get => key;
-            set
-            {
-                if (value == key) return;
-                key = value;
-                Host = $"https://www.youtube.com/youtubei/v1/live_chat/send_message?key={@key}";
-            }
-        }
-        private string key = "";
-        public string Host { get; private set; }
         public string Authorization
         {
             get
@@ -48,6 +37,23 @@ namespace Silancer
         }
         public string _authorization = "";
         public string Onbehalfofuser { get; set; }
+
+        public bool InitializeFromDictionary(Dictionary<string, string> iniDict)
+        {
+            try
+            {
+                Name = iniDict["Name"];
+                Cookie = iniDict["Cookie"];
+                Onbehalfofuser = iniDict["Onbehalfofuser"];
+            }
+            catch
+            {
+                return false;
+            }
+            if (string.IsNullOrEmpty(Cookie) || string.IsNullOrEmpty(Name))
+                return false;
+            return true;
+        }
     }
     public class LancerSendResult : EventArgs
     {
@@ -61,56 +67,22 @@ namespace Silancer
         public bool IsMegaAttack { get; set; }
         public bool IsInnerException { get; set; }
     }
-    public class Lancer : IFromJson
+    public class Lancer:IFromJson
     {
         public bool IsAlive { get => MyThread.IsAlive; }
         /// <summary>
         /// 本地实例身份
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; init; }
+        public string LancerTokenName { get; init; }
+        public string ServantName { get; init; }
+
         public Servant MyServant { get; set; }
         public AmmoLoadMode ShootMode { get; set; } = AmmoLoadMode.Random;
         public int LoopAmmoPointer { get; set; }
         public string LoopAmmoList { get; set; }
         public Enemy MyEnemy { get; set; }
         public int MaxInterval { get; set; } = 3000;
-
-
-        // WEB参数
-        public string Key
-        {
-            get => key;
-            set
-            {
-                if (value == key) return;
-                key = value;
-                Host = $"https://www.youtube.com/youtubei/v1/live_chat/send_message?key={@key}";
-            }
-        }
-        private string key = "";
-        public string Host { get; private set; }
-        public string Cookie { get; set; }
-        public string Authorization
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_authorization))
-                    _authorization = GetAuth(Cookie);
-                return _authorization;
-            }
-        }
-        public static string GetAuth(string cookie)
-        {
-            string time = ((DateTime.Now.ToUniversalTime().Ticks - 621355968000000000) / 10000000).ToString();
-            StringBuilder sub = new StringBuilder();
-            foreach (var t in SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes($"{time} {Regex.Match(cookie, @"SAPISID=(.*?);").Groups[1]} https://www.youtube.com")))
-            {
-                sub.Append(t.ToString("X2"));
-            }
-            return $"SAPISIDHASH {time}_{sub.ToString().ToLower()}";
-        }
-        public string _authorization = "";
-        public string Onbehalfofuser { get; set; }
 
         // 私有计数器
         private ulong messageIndex;

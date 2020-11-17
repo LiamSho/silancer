@@ -10,64 +10,6 @@ using System.Reflection;
 
 namespace Silancer
 {
-    public static class GlobalSettings
-    {
-        public static string Google_Key { get; set; } = "";
-        public static string Settings_Folder { get; set; } = "settings";
-        public static string Ammos_Folder { get; set; } = "ammos";
-        public static string Lancers_Json_File_Name { get; set; } = "lancers.json";
-        public static string Enemies_Json_File_Name { get; set; } = "enemies.json";
-        public static void LoadSettings(string path)
-        {
-            if (!File.Exists(path)) return;
-            using var fs = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-            using var sr = new StreamReader(fs);
-            Dictionary<string, string> tempDic = null;
-            try
-            {
-                tempDic = JsonConvert.DeserializeObject<Dictionary<string, string>>(sr.ReadToEnd());
-            }
-            catch
-            {
-                return;
-            }
-            foreach (var p in typeof(GlobalSettings).GetProperties(BindingFlags.Public | BindingFlags.Static))
-            {
-                try
-                {
-                    string key = p.Name;
-                    if (tempDic.ContainsKey(key))
-                        if (!string.IsNullOrEmpty(tempDic[key]))
-                            p.SetValue(null, tempDic[key]);
-                }
-                catch
-                {
-                    continue;
-                }
-            }
-        }
-        public static bool SaveSettings(string path)
-        {
-            try
-            {
-                FileStream fs = null;
-                if (!File.Exists(path))
-                    fs = File.Create(path);
-                else
-                    fs = File.OpenWrite(path);
-                using var sw = new StreamWriter(fs);
-                sw.Write($"{{\"Google_Key\":\"{Google_Key}\",\"Settings_Folder\":\"{Settings_Folder}\",\"Ammos_Folder\":\"{Ammos_Folder}\"," +
-                    $"\"Lancers_Json_File_Name\":\"{Lancers_Json_File_Name}\",\"Enemies_Json_File_Name\":\"{Enemies_Json_File_Name}\",}}");
-                fs.Flush();
-                fs.Close();
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-    }
     public sealed class Program
     {
         static void Main(string[] args)

@@ -1,7 +1,8 @@
 {
   "Google_Key": "",
-  "Settings_Folder": "settings",
-  "Ammos_Folder": "ammos",
+  "Settings_Folder_Name": "settings",
+  "Ammos_Folder_Name": "ammos",
+  "Lancer_Tokens_Json_File_Name": "lancertokens.json",
   "Lancers_Json_File_Name": "lancers.json",
   "Enemies_Json_File_Name": "enemies.json"
 }
