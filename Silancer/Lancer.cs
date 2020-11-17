@@ -12,10 +12,42 @@ using System.Threading.Tasks;
 
 namespace Silancer
 {
-    public enum AmmoMode
+    public class LancerToken : IFromJson
     {
-        Random,
-        Loop
+        public string Cookie { get; set; }
+        public string Key
+        {
+            get => key;
+            set
+            {
+                if (value == key) return;
+                key = value;
+                Host = $"https://www.youtube.com/youtubei/v1/live_chat/send_message?key={@key}";
+            }
+        }
+        private string key = "";
+        public string Host { get; private set; }
+        public string Authorization
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_authorization))
+                    _authorization = GetAuth(Cookie);
+                return _authorization;
+            }
+        }
+        public static string GetAuth(string cookie)
+        {
+            string time = ((DateTime.Now.ToUniversalTime().Ticks - 621355968000000000) / 10000000).ToString();
+            StringBuilder sub = new StringBuilder();
+            foreach (var t in SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes($"{time} {Regex.Match(cookie, @"SAPISID=(.*?);").Groups[1]} https://www.youtube.com")))
+            {
+                sub.Append(t.ToString("X2"));
+            }
+            return $"SAPISIDHASH {time}_{sub.ToString().ToLower()}";
+        }
+        public string _authorization = "";
+        public string Onbehalfofuser { get; set; }
     }
     public class LancerSendResult : EventArgs
     {
@@ -26,8 +58,8 @@ namespace Silancer
         public Ammo MyAmmo { get; set; }
         public bool IsSendSuccessful { get; set; }
         public bool IsNetSuccessful { get; set; }
-        public bool IsMegaAttack { get; set; } = false;
-        public bool IsInnerException { get; set; } = false;
+        public bool IsMegaAttack { get; set; }
+        public bool IsInnerException { get; set; }
     }
     public class Lancer : IFromJson
     {
@@ -36,11 +68,11 @@ namespace Silancer
         /// 本地实例身份
         /// </summary>
         public string Name { get; set; }
-        public Servant MyServant { get; set; } = null;
-        public AmmoMode ShootMode { get; set; } = AmmoMode.Random;
-        public int LoopAmmoPointer { get; set; } = 0;
+        public Servant MyServant { get; set; }
+        public AmmoLoadMode ShootMode { get; set; } = AmmoLoadMode.Random;
+        public int LoopAmmoPointer { get; set; }
         public string LoopAmmoList { get; set; }
-        public Enemy MyEnemy { get; set; } = null;
+        public Enemy MyEnemy { get; set; }
         public int MaxInterval { get; set; } = 3000;
 
 
@@ -67,7 +99,7 @@ namespace Silancer
                 return _authorization;
             }
         }
-        public string GetAuth(string cookie)
+        public static string GetAuth(string cookie)
         {
             string time = ((DateTime.Now.ToUniversalTime().Ticks - 621355968000000000) / 10000000).ToString();
             StringBuilder sub = new StringBuilder();
@@ -81,10 +113,10 @@ namespace Silancer
         public string Onbehalfofuser { get; set; }
 
         // 私有计数器
-        private ulong messageIndex = 0;
-        private ulong successCounter = 0;
-        private ulong sendCounter = 0;
-        private ulong continueFailedCounter = 0;
+        private ulong messageIndex;
+        private ulong successCounter;
+        private ulong sendCounter;
+        private ulong continueFailedCounter;
 
         /// <summary>
         /// 发送单条消息
@@ -163,7 +195,7 @@ namespace Silancer
         }
 
         #region 线程
-        public bool ReadyToStop { get; set; } = false;
+        public bool ReadyToStop { get; set; }
         private long coolDown = 0;
         private void Thread_ReadingIn()
         {
@@ -185,10 +217,10 @@ namespace Silancer
                     Ammo thisAmmo = null;
                     switch (ShootMode)
                     {
-                        case AmmoMode.Random:
+                        case AmmoLoadMode.Random:
                             thisAmmo = MyServant.RandomAmmo;
                             break;
-                        case AmmoMode.Loop:
+                        case AmmoLoadMode.Loop:
                             try
                             {
                                 (thisAmmo, LoopAmmoPointer) = MyServant.LoopAmmo(LoopAmmoPointer, LoopAmmoList);
@@ -202,7 +234,7 @@ namespace Silancer
                     try
                     {
                         int f = -1;
-                        if (ShootMode == AmmoMode.Random)
+                        if (ShootMode == AmmoLoadMode.Random)
                             f = SendMessage(thisAmmo.Content, MyEnemy);
                         if (f < 0)
                             continueFailedCounter += 1;
@@ -293,6 +325,12 @@ namespace Silancer
     }
     public enum AttackMode
     {
-        Normal, MegaAttack
+        Normal,
+        MegaAttack
+    }
+    public enum AmmoLoadMode
+    {
+        Random,
+        Loop
     }
 }

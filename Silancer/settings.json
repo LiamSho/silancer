@@ -1,5 +1,7 @@
 {
-    "Ammos_Folder":"settings\\ammos",
-    "Lancers_Json_Path":"settings\\lancers.json",
-    "Enemies_Json_Path":"settings\\enemies.json"
+  "Google_Key": "",
+  "Settings_Folder": "settings",
+  "Ammos_Folder": "ammos",
+  "Lancers_Json_File_Name": "lancers.json",
+  "Enemies_Json_File_Name": "enemies.json"
 }
